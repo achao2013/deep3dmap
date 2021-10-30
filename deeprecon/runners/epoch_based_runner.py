@@ -4,10 +4,11 @@ import platform
 import shutil
 import time
 import warnings
+from deeprecon.core import utils
 
 import torch
 
-import mmcv
+import deeprecon.core as core
 from .base_runner import BaseRunner
 from .builder import RUNNERS
 from .checkpoint import save_checkpoint
@@ -81,7 +82,7 @@ class EpochBasedRunner(BaseRunner):
                 iteratively.
         """
         assert isinstance(data_loaders, list)
-        assert mmcv.is_list_of(workflow, tuple)
+        assert core.is_list_of(workflow, tuple)
         assert len(data_loaders) == len(workflow)
         if max_epochs is not None:
             warnings.warn(
@@ -172,16 +173,9 @@ class EpochBasedRunner(BaseRunner):
         if create_symlink:
             dst_file = osp.join(out_dir, 'latest.pth')
             if platform.system() != 'Windows':
-                mmcv.symlink(filename, dst_file)
+                core.utils.symlink(filename, dst_file)
             else:
                 shutil.copy(filepath, dst_file)
 
 
-@RUNNERS.register_module()
-class Runner(EpochBasedRunner):
-    """Deprecated name of EpochBasedRunner."""
 
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            'Runner was deprecated, please use EpochBasedRunner instead')
-        super().__init__(*args, **kwargs)

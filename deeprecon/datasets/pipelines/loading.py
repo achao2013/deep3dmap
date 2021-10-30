@@ -1,11 +1,12 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import os.path as osp
 
-import mmcv
+import deeprecon
 import numpy as np
+from deeprecon.core.utils import fileio
 import pycocotools.mask as maskUtils
 
-from mmdet.core import BitmapMasks, PolygonMasks
+from deeprecon.core.utils.mask_structures import BitmapMasks, PolygonMasks
 from ..builder import PIPELINES
 
 try:
@@ -27,10 +28,10 @@ class LoadImageFromFile:
         to_float32 (bool): Whether to convert the loaded image to a float32
             numpy array. If set to False, the loaded image is an uint8 array.
             Defaults to False.
-        color_type (str): The flag argument for :func:`mmcv.imfrombytes`.
+        color_type (str): The flag argument for :func:`fileio.imfrombytes`.
             Defaults to 'color'.
         file_client_args (dict): Arguments to instantiate a FileClient.
-            See :class:`mmcv.fileio.FileClient` for details.
+            See :class:`fileio.FileClient` for details.
             Defaults to ``dict(backend='disk')``.
     """
 
@@ -54,7 +55,7 @@ class LoadImageFromFile:
         """
 
         if self.file_client is None:
-            self.file_client = mmcv.FileClient(**self.file_client_args)
+            self.file_client = fileio.FileClient(**self.file_client_args)
 
         if results['img_prefix'] is not None:
             filename = osp.join(results['img_prefix'],
@@ -63,7 +64,7 @@ class LoadImageFromFile:
             filename = results['img_info']['filename']
 
         img_bytes = self.file_client.get(filename)
-        img = mmcv.imfrombytes(img_bytes, flag=self.color_type)
+        img = fileio.imfrombytes(img_bytes, flag=self.color_type)
         if self.to_float32:
             img = img.astype(np.float32)
 
@@ -129,10 +130,10 @@ class LoadMultiChannelImageFromFiles:
         to_float32 (bool): Whether to convert the loaded image to a float32
             numpy array. If set to False, the loaded image is an uint8 array.
             Defaults to False.
-        color_type (str): The flag argument for :func:`mmcv.imfrombytes`.
+        color_type (str): The flag argument for :func:`fileio.imfrombytes`.
             Defaults to 'color'.
         file_client_args (dict): Arguments to instantiate a FileClient.
-            See :class:`mmcv.fileio.FileClient` for details.
+            See :class:`fileio.FileClient` for details.
             Defaults to ``dict(backend='disk')``.
     """
 
@@ -157,7 +158,7 @@ class LoadMultiChannelImageFromFiles:
         """
 
         if self.file_client is None:
-            self.file_client = mmcv.FileClient(**self.file_client_args)
+            self.file_client = fileio.FileClient(**self.file_client_args)
 
         if results['img_prefix'] is not None:
             filename = [
@@ -170,7 +171,7 @@ class LoadMultiChannelImageFromFiles:
         img = []
         for name in filename:
             img_bytes = self.file_client.get(name)
-            img.append(mmcv.imfrombytes(img_bytes, flag=self.color_type))
+            img.append(fileio.imfrombytes(img_bytes, flag=self.color_type))
         img = np.stack(img, axis=-1)
         if self.to_float32:
             img = img.astype(np.float32)
@@ -214,7 +215,7 @@ class LoadAnnotations:
         poly2mask (bool): Whether to convert the instance masks from polygons
             to bitmaps. Default: True.
         file_client_args (dict): Arguments to instantiate a FileClient.
-            See :class:`mmcv.fileio.FileClient` for details.
+            See :class:`fileio.FileClient` for details.
             Defaults to ``dict(backend='disk')``.
     """
 
@@ -346,12 +347,12 @@ class LoadAnnotations:
         """
 
         if self.file_client is None:
-            self.file_client = mmcv.FileClient(**self.file_client_args)
+            self.file_client = fileio.FileClient(**self.file_client_args)
 
         filename = osp.join(results['seg_prefix'],
                             results['ann_info']['seg_map'])
         img_bytes = self.file_client.get(filename)
-        results['gt_semantic_seg'] = mmcv.imfrombytes(
+        results['gt_semantic_seg'] = fileio.imfrombytes(
             img_bytes, flag='unchanged').squeeze()
         results['seg_fields'].append('gt_semantic_seg')
         return results
@@ -404,7 +405,7 @@ class LoadPanopticAnnotations(LoadAnnotations):
         with_seg (bool): Whether to parse and load the semantic segmentation
             annotation. Default: True.
         file_client_args (dict): Arguments to instantiate a FileClient.
-            See :class:`mmcv.fileio.FileClient` for details.
+            See :class:`fileio.FileClient` for details.
             Defaults to ``dict(backend='disk')``.
     """
 
@@ -440,12 +441,12 @@ class LoadPanopticAnnotations(LoadAnnotations):
         """
 
         if self.file_client is None:
-            self.file_client = mmcv.FileClient(**self.file_client_args)
+            self.file_client = fileio.FileClient(**self.file_client_args)
         filename = osp.join(results['seg_prefix'],
                             results['ann_info']['seg_map'])
 
         img_bytes = self.file_client.get(filename)
-        pan_png = mmcv.imfrombytes(
+        pan_png = fileio.imfrombytes(
             img_bytes, flag='color', channel_order='rgb').squeeze()
         pan_png = rgb2id(pan_png)
 

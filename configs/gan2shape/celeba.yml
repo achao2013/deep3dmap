@@ -44,7 +44,7 @@ z_translation_range: 0  # (-t,t) in 3D
 view_scale: 1.2  # enlarge viewpoint variation
 collect_iters: 100
 batchsize: 16
-lr: 0.0001
+
 lam_perc: 0.5
 lam_smooth: 0.01
 lam_regular: 0.01

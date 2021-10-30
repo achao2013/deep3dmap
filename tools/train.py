@@ -8,28 +8,28 @@ import warnings
 import random
 import numpy as np
 
-import mmcv
+
 import torch
-from mmcv import Config, DictAction
-from mmcv.runner import get_dist_info, init_dist
-from mmcv.utils import get_git_hash
+from deeprecon.core import Config, DictAction
+from deeprecon.runners import get_dist_info, init_dist
+from deeprecon.core.utils import get_git_hash
 
-from mmdet import __version__
-from mmdet.models import build_reconstruction
-from mmdet.utils import collect_env, get_root_logger
+from deeprecon.core import __version__
+from deeprecon.models import build_reconstruction
+from deeprecon.core.utils import collect_env, get_root_logger
 
 
 
-from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
-from mmcv.runner import (HOOKS, DistSamplerSeedHook, EpochBasedRunner,
-                         Fp16OptimizerHook, OptimizerHook, build_optimizer,
+
+from deeprecon.runners import (HOOKS, DistSamplerSeedHook, EpochBasedRunner,
+                          OptimizerHook,
                          build_runner)
-from mmcv.utils import build_from_cfg
+from deeprecon.core.utils import build_from_cfg
 
-from mmdet.core import DistEvalHook, EvalHook
-from mmdet.datasets import (build_dataloader, build_dataset,
+from deeprecon.runners import DistEvalHook, EvalHook
+from deeprecon.datasets import (build_dataloader, build_dataset,
                             replace_ImageToTensor)
-from mmdet.utils import get_root_logger
+from deeprecon.core.utils import get_root_logger
 
 def set_random_seed(seed, deterministic=False):
     """Set random seed.
@@ -61,21 +61,8 @@ def train_reconstruction(model,
 
     # prepare data loaders
     dataset = dataset if isinstance(dataset, (list, tuple)) else [dataset]
-    if 'imgs_per_gpu' in cfg.data:
-        logger.warning('"imgs_per_gpu" is deprecated in MMDet V2.0. '
-                       'Please use "samples_per_gpu" instead')
-        if 'samples_per_gpu' in cfg.data:
-            logger.warning(
-                f'Got "imgs_per_gpu"={cfg.data.imgs_per_gpu} and '
-                f'"samples_per_gpu"={cfg.data.samples_per_gpu}, "imgs_per_gpu"'
-                f'={cfg.data.imgs_per_gpu} is used in this experiments')
-        else:
-            logger.warning(
-                'Automatically set "samples_per_gpu"="imgs_per_gpu"='
-                f'{cfg.data.imgs_per_gpu} in this experiments')
-        cfg.data.samples_per_gpu = cfg.data.imgs_per_gpu
-
-    data_loaders = [
+    if cfg.use_data_loaders:
+        data_loaders = [
         build_dataloader(
             ds,
             cfg.data.samples_per_gpu,
@@ -84,24 +71,12 @@ def train_reconstruction(model,
             len(cfg.gpu_ids),
             dist=distributed,
             seed=cfg.seed) for ds in dataset
-    ]
+        ]
 
-    # put model on gpus
-    if distributed:
-        find_unused_parameters = cfg.get('find_unused_parameters', False)
-        # Sets the `find_unused_parameters` parameter in
-        # torch.nn.parallel.DistributedDataParallel
-        model = MMDistributedDataParallel(
-            model.cuda(),
-            device_ids=[torch.cuda.current_device()],
-            broadcast_buffers=False,
-            find_unused_parameters=find_unused_parameters)
-    else:
-        model = MMDataParallel(
-            model.cuda(cfg.gpu_ids[0]), device_ids=cfg.gpu_ids)
+
 
     # build runner
-    optimizer = build_optimizer(model, cfg.optimizer)
+    
 
     if 'runner' not in cfg:
         cfg.runner = {
@@ -119,20 +94,21 @@ def train_reconstruction(model,
         cfg.runner,
         default_args=dict(
             model=model,
-            optimizer=optimizer,
+            optimizer=cfg.optimizer,
             work_dir=cfg.work_dir,
             logger=logger,
             meta=meta))
+            
+    if cfg.use_data_loaders:
+        runner.data_loaders=data_loaders
+    else:#use dataset which load data in single machine
+        runner.dataset=dataset
+        
 
     # an ugly workaround to make .log and .log.json filenames the same
     runner.timestamp = timestamp
 
-    # fp16 setting
-    fp16_cfg = cfg.get('fp16', None)
-    if fp16_cfg is not None:
-        optimizer_config = Fp16OptimizerHook(
-            **cfg.optimizer_config, **fp16_cfg, distributed=distributed)
-    elif distributed and 'type' not in cfg.optimizer_config:
+    if distributed and 'type' not in cfg.optimizer_config:
         optimizer_config = OptimizerHook(**cfg.optimizer_config)
     else:
         optimizer_config = cfg.optimizer_config
@@ -154,7 +130,8 @@ def train_reconstruction(model,
             cfg.data.val.pipeline = replace_ImageToTensor(
                 cfg.data.val.pipeline)
         val_dataset = build_dataset(cfg.data.val, dict(test_mode=True))
-        val_dataloader = build_dataloader(
+        if cfg.use_data_loaders:
+            val_dataloader = build_dataloader(
             val_dataset,
             samples_per_gpu=val_samples_per_gpu,
             workers_per_gpu=cfg.data.workers_per_gpu,
@@ -165,7 +142,8 @@ def train_reconstruction(model,
         eval_hook = DistEvalHook if distributed else EvalHook
         # In this PR (https://github.com/open-mmlab/mmcv/pull/1193), the
         # priority of IterTimerHook has been modified from 'NORMAL' to 'LOW'.
-        runner.register_hook(
+        if cfg.use_data_loaders:
+            runner.register_hook(
             eval_hook(val_dataloader, **eval_cfg), priority='LOW')
 
     # user-defined hooks
@@ -186,7 +164,8 @@ def train_reconstruction(model,
         runner.resume(cfg.resume_from)
     elif cfg.load_from:
         runner.load_checkpoint(cfg.load_from)
-    runner.run(data_loaders, cfg.workflow)
+    
+    runner.run(cfg.workflow)
 
 
 def parse_args():
@@ -262,7 +241,7 @@ def main():
         cfg.merge_from_dict(args.cfg_options)
     # import modules from string list.
     if cfg.get('custom_imports', None):
-        from mmcv.utils import import_modules_from_strings
+        from deeprecon.core.utils import import_modules_from_strings
         import_modules_from_strings(**cfg['custom_imports'])
     # set cudnn_benchmark
     if cfg.get('cudnn_benchmark', False):

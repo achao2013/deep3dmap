@@ -16,26 +16,26 @@ from torch.optim import Optimizer
 from torch.utils import model_zoo
 
 import mmcv
-from ..fileio import FileClient
-from ..fileio import load as load_file
+from ..core.utils.fileio import FileClient
+from ..core.utils.fileio import load as load_file
 from ..parallel import is_module_wrapper
-from ..utils import mkdir_or_exist
 from .dist_utils import get_dist_info
 
-ENV_MMCV_HOME = 'MMCV_HOME'
+ENV_MMCV_HOME = 'DEEPRECON_HOME'
 ENV_XDG_CACHE_HOME = 'XDG_CACHE_HOME'
 DEFAULT_CACHE_DIR = '~/.cache'
 
 
-def _get_mmcv_home():
-    mmcv_home = os.path.expanduser(
+def _get_deeprecon_home():
+    deeprecon_home = os.path.expanduser(
         os.getenv(
             ENV_MMCV_HOME,
             os.path.join(
                 os.getenv(ENV_XDG_CACHE_HOME, DEFAULT_CACHE_DIR), 'mmcv')))
 
-    mkdir_or_exist(mmcv_home)
-    return mmcv_home
+    if not osp.exists(deeprecon_home):
+        os.makedirs(deeprecon_home)
+    return deeprecon_home
 
 
 def load_state_dict(module, state_dict, strict=False, logger=None):
@@ -119,11 +119,11 @@ def get_torchvision_models():
 
 
 def get_external_models():
-    mmcv_home = _get_mmcv_home()
+    deeprecon_home = _get_deeprecon_home()
     default_json_path = osp.join(mmcv.__path__[0], 'model_zoo/open_mmlab.json')
     default_urls = load_file(default_json_path)
     assert isinstance(default_urls, dict)
-    external_json_path = osp.join(mmcv_home, 'open_mmlab.json')
+    external_json_path = osp.join(deeprecon_home, 'open_mmlab.json')
     if osp.exists(external_json_path):
         external_urls = load_file(external_json_path)
         assert isinstance(external_urls, dict)
@@ -404,7 +404,7 @@ def load_from_openmmlab(filename, map_location=None):
     if model_url.startswith(('http://', 'https://')):
         checkpoint = load_from_http(model_url, map_location=map_location)
     else:
-        filename = osp.join(_get_mmcv_home(), model_url)
+        filename = osp.join(_get_deeprecon_home(), model_url)
         if not osp.isfile(filename):
             raise IOError(f'{filename} is not a checkpoint file')
         checkpoint = torch.load(filename, map_location=map_location)
@@ -674,7 +674,8 @@ def save_checkpoint(model, filename, optimizer=None, meta=None):
                 f.flush()
             model.create_file(checkpoint_file, name=model_name)
     else:
-        mmcv.mkdir_or_exist(osp.dirname(filename))
+        if not osp.exists(osp.dirname(filename)):
+            os.makedirs(osp.dirname(filename))
         # immediately flush buffer
         with open(filename, 'wb') as f:
             torch.save(checkpoint, f)

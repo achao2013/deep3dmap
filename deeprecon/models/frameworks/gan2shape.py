@@ -11,64 +11,64 @@ import torch.distributed as dist
 import torchvision
 from torchvision import transforms
 
-from . import networks
-from . import utils
-from .stylegan2 import Generator, Discriminator, PerceptualLoss
-from .renderer import Renderer
-from .losses import DiscriminatorLoss
-
+from .. import networks
+from deeprecon.core.utils import utils
+from pnpmodules.stylegan2 import Generator, Discriminator, PerceptualLoss
+from deeprecon.core.renderer import Renderer
+from deeprecon.models.losses import DiscriminatorLoss
+from deeprecon.parallel import MMDataParallel, MMDistributedDataParallel
 
 def map_func(storage, location):
     return storage.cpu()
 
 
-class GAN2Shape():
-    def __init__(self, cfgs):
+class Gan2Shape():
+    def __init__(self, model_cfgs):
         # basic parameters
-        self.model_name = cfgs.get('model_name', self.__class__.__name__)
-        self.checkpoint_dir = cfgs.get('checkpoint_dir', 'results')
-        self.distributed = cfgs.get('distributed')
+        self.model_name = model_cfgs.get('model_name', self.__class__.__name__)
+        self.checkpoint_dir = model_cfgs.get('checkpoint_dir', 'results')
+        self.distributed = model_cfgs.get('distributed')
         self.rank = dist.get_rank() if self.distributed else 0
         self.world_size = dist.get_world_size() if self.distributed else 1
         self.mode = 'step1'
-        self.category = cfgs.get('category', 'face')
-        self.cfgs = cfgs
+        self.category = model_cfgs.get('category', 'face')
+        self.model_cfgs = model_cfgs
         # functional parameters
-        self.joint_train = cfgs.get('joint_train', False)
-        self.independent = cfgs.get('independent', True)
-        self.share_weight = cfgs.get('share_weight', True)
-        self.relative_enc = cfgs.get('relative_enc', False)
-        self.use_mask = cfgs.get('use_mask', True)
-        self.add_mean_L = cfgs.get('add_mean_L', False)
-        self.add_mean_V = cfgs.get('add_mean_V', False)
-        self.flip1 = cfgs.get('flip1_cfg', [False])[0]
-        self.flip3 = cfgs.get('flip3_cfg', [False])[0]
-        self.reset_weight = cfgs.get('reset_weight', False)
-        self.load_gt_depth = cfgs.get('load_gt_depth', False)
+        self.joint_train = model_cfgs.get('joint_train', False)
+        self.independent = model_cfgs.get('independent', True)
+        self.share_weight = model_cfgs.get('share_weight', True)
+        self.relative_enc = model_cfgs.get('relative_enc', False)
+        self.use_mask = model_cfgs.get('use_mask', True)
+        self.add_mean_L = model_cfgs.get('add_mean_L', False)
+        self.add_mean_V = model_cfgs.get('add_mean_V', False)
+        self.flip1 = model_cfgs.get('flip1_cfg', [False])[0]
+        self.flip3 = model_cfgs.get('flip3_cfg', [False])[0]
+        self.reset_weight = model_cfgs.get('reset_weight', False)
+        self.load_gt_depth = model_cfgs.get('load_gt_depth', False)
         # detailed parameters
-        self.image_size = cfgs.get('image_size', 128)
-        self.crop = cfgs.get('crop', None)
-        self.min_depth = cfgs.get('min_depth', 0.9)
-        self.max_depth = cfgs.get('max_depth', 1.1)
-        self.border_depth = cfgs.get('border_depth', (0.7*self.max_depth + 0.3*self.min_depth))
-        self.xyz_rotation_range = cfgs.get('xyz_rotation_range', 60)
-        self.xy_translation_range = cfgs.get('xy_translation_range', 0.1)
-        self.z_translation_range = cfgs.get('z_translation_range', 0.1)
-        self.view_scale = cfgs.get('view_scale', 1.0)
-        self.collect_iters = cfgs.get('collect_iters', 100)
-        self.rand_light = cfgs.get('rand_light', [-1,1,-0.2,0.8,-0.1,0.6,-0.6])
+        self.image_size = model_cfgs.get('image_size', 128)
+        self.crop = model_cfgs.get('crop', None)
+        self.min_depth = model_cfgs.get('min_depth', 0.9)
+        self.max_depth = model_cfgs.get('max_depth', 1.1)
+        self.border_depth = model_cfgs.get('border_depth', (0.7*self.max_depth + 0.3*self.min_depth))
+        self.xyz_rotation_range = model_cfgs.get('xyz_rotation_range', 60)
+        self.xy_translation_range = model_cfgs.get('xy_translation_range', 0.1)
+        self.z_translation_range = model_cfgs.get('z_translation_range', 0.1)
+        self.view_scale = model_cfgs.get('view_scale', 1.0)
+        self.collect_iters = model_cfgs.get('collect_iters', 100)
+        self.rand_light = model_cfgs.get('rand_light', [-1,1,-0.2,0.8,-0.1,0.6,-0.6])
         # optimization parameters
-        self.batchsize = cfgs.get('batchsize', 8)
-        self.lr = cfgs.get('lr', 1e-4)
-        self.lam_perc = cfgs.get('lam_perc', 1)
-        self.lam_smooth = cfgs.get('lam_smooth', 0.01)
-        self.lam_regular = cfgs.get('lam_regular', 0.01)
+        self.batchsize = model_cfgs.get('batchsize', 8)
+        self.lr = model_cfgs.get('lr', 1e-4)
+        self.lam_perc = model_cfgs.get('lam_perc', 1)
+        self.lam_smooth = model_cfgs.get('lam_smooth', 0.01)
+        self.lam_regular = model_cfgs.get('lam_regular', 0.01)
         # StyleGAN parameters
-        self.channel_multiplier = cfgs.get('channel_multiplier', 2)
-        self.gan_size = cfgs.get('gan_size', 256)
-        self.z_dim = cfgs.get('z_dim', 512)
-        self.truncation = cfgs.get('truncation', 1)
-        self.F1_d = cfgs.get('F1_d', 2)
+        self.channel_multiplier = model_cfgs.get('channel_multiplier', 2)
+        self.gan_size = model_cfgs.get('gan_size', 256)
+        self.z_dim = model_cfgs.get('z_dim', 512)
+        self.truncation = model_cfgs.get('truncation', 1)
+        self.F1_d = model_cfgs.get('F1_d', 2)
         # networks and optimizers
         self.generator = Generator(self.gan_size, self.z_dim, 8, channel_multiplier=self.channel_multiplier)
         self.discriminator = Discriminator(self.gan_size, channel_multiplier=self.channel_multiplier)
@@ -81,15 +81,13 @@ class GAN2Shape():
         self.netL = networks.Encoder(cin=3, cout=4, size=self.image_size, nf=nf)
         self.netEnc = networks.ResEncoder(3, 512, size=self.image_size, nf=32, activation=None)
         self.network_names = [k for k in vars(self) if 'net' in k]
-        self.make_optimizer = lambda model: torch.optim.Adam(
-            filter(lambda p: p.requires_grad, model.parameters()),
-            lr=self.lr, betas=(0.9, 0.999), weight_decay=5e-4)
+
 
         self.PerceptualLoss = PerceptualLoss(
             model='net-lin', net='vgg', use_gpu=True, gpu_ids=[torch.device(self.rank)]
         )
         self.d_loss = DiscriminatorLoss(ftr_num=4)
-        self.renderer = Renderer(cfgs, self.image_size)
+        self.renderer = Renderer(model_cfgs, self.image_size)
 
         # depth rescaler: -1~1 -> min_deph~max_deph
         self.depth_rescaler = lambda d: (1+d)/2 *self.max_depth + (1-d)/2 *self.min_depth
@@ -99,11 +97,11 @@ class GAN2Shape():
         self.init_VL_sampler()
 
         # load pre-trained weights
-        ckpt = cfgs.get('pretrain', None)
+        ckpt = model_cfgs.get('pretrain', None)
         if ckpt is not None:
             self.ckpt = torch.load(ckpt, map_location=map_func)
             self.load_model_state(self.ckpt)
-        gan_ckpt = torch.load(cfgs.get('gan_ckpt'), map_location=map_func)
+        gan_ckpt = torch.load(model_cfgs.get('gan_ckpt'), map_location=map_func)
         self.generator.load_state_dict(gan_ckpt['g_ema'], strict=False)
         self.generator = self.generator.cuda()
         self.generator.eval()
@@ -119,12 +117,20 @@ class GAN2Shape():
         for k in self.network_names:
             network = getattr(self, k)
             network = network.cuda()
-        # distributed
+        
+        # put model on gpus
         if self.distributed and self.share_weight:
             for net_name in self.network_names:
-                setattr(self, net_name, DDP(getattr(self, net_name),
+                if self.distributed: # distributed
+                    find_unused_parameters = model_cfgs.get('find_unused_parameters', False)
+                    setattr(self, net_name, MMDistributedDataParallel(getattr(self, net_name),
                                             device_ids=[torch.cuda.current_device()],
-                                            find_unused_parameters=True))
+                                            broadcast_buffers=False,
+                                            find_unused_parameters=find_unused_parameters))
+                else:
+                    #model.cuda(cfg.gpu_ids[0])
+                    setattr(self, net_name, MMDataParallel(
+                        getattr(self, net_name), device_ids=model_cfgs.gpu_ids))
 
         self.need_ellipsoid_init = False
         if ckpt is None or 'netD' not in self.ckpt.keys():
@@ -141,125 +147,26 @@ class GAN2Shape():
     def reset_model_weight(self):
         self.load_model_state(self.ckpt)
 
-    def setup_target(self, image_path, gt_depth_path, latent_path):
-        self.image_path = image_path
-        self.gt_depth_path = gt_depth_path
-        self.w_path = latent_path
-        self.load_data()
-        self.load_latent()
+    def setup_target(self, img_num, input_im, input_im_all, w_path, latent_w, latent_w_all):
+        self.latent_style_forward(w_path, latent_w, latent_w_all)
         # prepare object mask, used for shape initialization and optionally remove the background
-        self.prepare_mask()
+        self.prepare_mask(img_num, input_im, input_im_all)
         if self.need_ellipsoid_init:
             self.init_netD_ellipsoid()
             if not self.reset_weight:
                 self.need_ellipsoid_init = False
 
-    def load_data(self):
-        transform = transforms.Compose(
-            [
-                transforms.Resize(self.image_size),
-                transforms.ToTensor(),
-            ]
-        )
 
-        def load_depth(depth_path):
-            depth_gt = Image.open(depth_path)
-            if self.crop is not None:
-                depth_gt = transforms.CenterCrop(self.crop)(depth_gt)
-            depth_gt = transform(depth_gt).cuda()
-            depth_gt = (1 - depth_gt) * 2 - 1
-            depth_gt = self.depth_rescaler(depth_gt)
-            return depth_gt
-
-        def load_image(image_path):
-            image = Image.open(image_path)
-            self.origin_size = image.size[0]  # we assume h=w
-            if self.crop is not None:
-                image = transforms.CenterCrop(self.crop)(image)
-            image = transform(image).unsqueeze(0).cuda()
-            image = image * 2 - 1
-            return image
-
-        if self.joint_train:
-            assert type(self.image_path) is list
-            self.input_im_all = []
-            if self.load_gt_depth:
-                self.depth_gt_all = []
-            self.img_num = len(self.image_path)
-            assert self.collect_iters >= self.img_num
-            print("Loading images...")
-            for i in range(self.img_num):
-                image_path = self.image_path[i]
-                input_im = load_image(image_path)
-                self.input_im_all.append(input_im.cpu())
-                if self.load_gt_depth:
-                    depth_path = self.gt_depth_path[i]
-                    depth_gt = load_depth(depth_path)
-                    self.depth_gt_all.append(depth_gt.cpu())
-            self.input_im = self.input_im_all[0].cuda()
-            if self.load_gt_depth:
-                self.depth_gt = self.depth_gt_all[0].cuda()
-            # img_idx is used to track the index of current image
-            self.img_idx = 0
-            self.idx_perm = torch.LongTensor(list(range(self.img_num)))
-        else:
-            if type(self.image_path) is list:
-                assert len(self.image_path) == self.world_size
-                self.image_path = self.image_path[self.rank]
-                if self.load_gt_depth:
-                    self.gt_depth_path = self.gt_depth_path[self.rank]
-            print("Loading images...")
-            self.input_im = load_image(self.image_path)
-            if self.load_gt_depth:
-                self.depth_gt = load_depth(self.gt_depth_path)
-
-    def load_latent(self):
-        with torch.no_grad():
-            def get_w_img(w_path):
-                latent_w = torch.load(w_path, map_location='cpu')
-                if type(latent_w) is dict:
-                    latent_w = latent_w['latent']
-                if latent_w.dim() == 1:
-                    latent_w = latent_w.unsqueeze(0)
-                latent_w = latent_w.cuda()
-
-                gan_im, _ = self.generator([latent_w], input_is_w=True, truncation_latent=self.mean_latent,
-                                           truncation=self.truncation, randomize_noise=False)
-                gan_im = gan_im.clamp(min=-1, max=1)
-                if self.crop is not None:
-                    gan_im = utils.resize(gan_im, [self.origin_size, self.origin_size])
-                    gan_im = utils.crop(gan_im, self.crop)
-                gan_im = utils.resize(gan_im, [self.image_size, self.image_size])
-                return latent_w, gan_im
-
-            if self.joint_train:
-                assert type(self.w_path) is list
-                self.latent_w_all, self.gan_im_all = [], []
-                for w_path in self.w_path:
-                    latent_w, gan_im = get_w_img(w_path)
-                    self.latent_w_all.append(latent_w.cpu())
-                    self.gan_im_all.append(gan_im.cpu())
-                self.latent_w = self.latent_w_all[0].cuda()
-                self.gan_im = self.gan_im_all[0].cuda()
-            else:
-                if type(self.w_path) is list:
-                    assert len(self.w_path) == self.world_size
-                    self.w_path = self.w_path[self.rank]
-                self.latent_w, self.gan_im = get_w_img(self.w_path)
-
-            self.center_w = self.generator.style_forward(torch.zeros(1, self.z_dim).cuda())
-            self.center_h = self.generator.style_forward(torch.zeros(1, self.z_dim).cuda(), depth=8-self.F1_d)
-
-    def prepare_mask(self):
+    def prepare_mask(self, img_num, input_im, input_im_all):
         with torch.no_grad():
             if self.joint_train:
                 self.input_mask_all = []
-                for i in range(self.img_num):
-                    input_im = self.input_im_all[i].cuda()
+                for i in range(img_num):
+                    input_im = input_im_all[i].cuda()
                     self.input_mask_all.append(self.parse_mask(input_im).cpu())
                 self.input_mask = self.input_mask_all[0].cuda()
             else:
-                self.input_mask = self.parse_mask(self.input_im)
+                self.input_mask = self.parse_mask(input_im)
 
     def next_image(self):
         # Used in joint training mode
@@ -323,8 +230,8 @@ class GAN2Shape():
             c_x = (max_x + min_x) / 2
             c_y = (max_y + min_y) / 2
             radius = 0.4
-            near = self.cfgs.get('prior_near', 0.91)
-            far = self.cfgs.get('prior_far', 1.02)
+            near = self.model_cfgs.get('prior_near', 0.91)
+            far = self.model_cfgs.get('prior_far', 1.02)
 
             ellipsoid = torch.Tensor(1,h,w).fill_(far)
             i, j = torch.meshgrid(torch.linspace(0, w-1, w), torch.linspace(0, h-1, h))
@@ -340,8 +247,8 @@ class GAN2Shape():
 
     def init_VL_sampler(self):
         from torch.distributions.multivariate_normal import MultivariateNormal as MVN
-        view_mvn_path = self.cfgs.get('view_mvn_path', 'checkpoints/view_light/view_mvn.pth')
-        light_mvn_path = self.cfgs.get('light_mvn_path', 'checkpoints/view_light/light_mvn.pth')
+        view_mvn_path = self.model_cfgs.get('view_mvn_path', 'checkpoints/view_light/view_mvn.pth')
+        light_mvn_path = self.model_cfgs.get('light_mvn_path', 'checkpoints/view_light/light_mvn.pth')
         view_mvn = torch.load(view_mvn_path)
         light_mvn = torch.load(light_mvn_path)
         self.view_mean = view_mvn['mean'].cuda()
@@ -363,11 +270,11 @@ class GAN2Shape():
 
     def init_parsing_model(self):
         if self.category in ['face', 'synface']:
-            from .parsing import BiSeNet
+            from deeprecon.models.parsing import BiSeNet
             self.parse_model = BiSeNet(n_classes=19)
             self.parse_model.load_state_dict(torch.load('checkpoints/parsing/bisenet.pth', map_location=map_func))
         else:
-            from .parsing import PSPNet
+            from deeprecon.models.parsing import PSPNet
             if self.category == 'church':
                 classes = 150
                 ckpt_path = 'checkpoints/parsing/pspnet_ade20k.pth'
@@ -412,21 +319,38 @@ class GAN2Shape():
                 mask = (out == 13).float()
         return utils.resize(mask, [self.image_size, self.image_size])
 
-    def init_optimizers(self):
-        self.optimizer_names = []
-        if self.mode == 'step1':
-            optimize_names = ['netA']
-        elif self.mode == 'step2':
-            optimize_names = ['netEnc']
-        elif self.mode == 'step3':
-            optimize_names = [name for name in self.network_names]
-            optimize_names.remove('netEnc')
+    def latent_style_forward(self, w_path, latent_w, latent_w_all):
+        with torch.no_grad():
+            def get_gan_img(latent_w):
 
-        for net_name in optimize_names:
-            optimizer = self.make_optimizer(getattr(self, net_name))
-            optim_name = net_name.replace('net', 'optimizer')
-            setattr(self, optim_name, optimizer)
-            self.optimizer_names += [optim_name]
+                gan_im, _ = self.generator([latent_w], input_is_w=True, truncation_latent=self.mean_latent,
+                                           truncation=self.truncation, randomize_noise=False)
+                gan_im = gan_im.clamp(min=-1, max=1)
+                if self.crop is not None:
+                    gan_im = utils.resize(gan_im, [self.origin_size, self.origin_size])
+                    gan_im = utils.crop(gan_im, self.crop)
+                gan_im = utils.resize(gan_im, [self.image_size, self.image_size])
+                return gan_im
+
+            if self.joint_train:
+                assert latent_w_all is not None
+                self.gan_im_all = []
+                for latent_w in latent_w_all:
+                    gan_im = get_gan_img(latent_w)
+                    latent_w_all.append(latent_w.cpu())
+                    self.gan_im_all.append(gan_im.cpu())
+                self.latent_w = latent_w_all[0].cuda()
+                self.gan_im = self.gan_im_all[0].cuda()
+            else:
+                if type(w_path) is list:
+                    assert len(w_path) == self.world_size
+                    self.latent_w = latent_w[self.rank]
+                self.gan_im = get_gan_img(latent_w)
+
+            self.center_w = self.generator.style_forward(torch.zeros(1, self.z_dim).cuda())
+            self.center_h = self.generator.style_forward(torch.zeros(1, self.z_dim).cuda(), depth=8-self.F1_d)
+
+
 
     def load_model_state(self, cp):
         for k in cp:
@@ -446,18 +370,7 @@ class GAN2Shape():
                 states[net_name] = getattr(self, net_name).state_dict()
         return states
 
-    def get_optimizer_state(self):
-        states = {}
-        for optim_name in self.optimizer_names:
-            states[optim_name] = getattr(self, optim_name).state_dict()
-        return states
 
-    def backward(self):
-        for optim_name in self.optimizer_names:
-            getattr(self, optim_name).zero_grad()
-        self.loss_total.backward()
-        for optim_name in self.optimizer_names:
-            getattr(self, optim_name).step()
 
     def forward_step1(self):
         b = 1
@@ -806,8 +719,8 @@ class GAN2Shape():
         root = f'{self.checkpoint_dir}/images/{img_name}'
         if not os.path.exists(root):
             os.makedirs(root)
-        flip = self.cfgs.get('flip3_cfg')[0]
-        num_stage = self.cfgs.get('num_stage')
+        flip = self.model_cfgs.get('flip3_cfg')[0]
+        num_stage = self.model_cfgs.get('num_stage')
 
         def save_img(imgs, root, prefix, crop=False, last_only=False):
             if last_only and stage < num_stage:

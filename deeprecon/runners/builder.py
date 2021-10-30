@@ -1,7 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import copy
 
-from ..core.base.registry import Registry
+from deeprecon.core.utils.registry import Registry
 
 RUNNERS = Registry('runner')
 RUNNER_BUILDERS = Registry('runner builder')

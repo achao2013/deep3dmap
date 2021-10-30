@@ -7,6 +7,7 @@
 """
 import copy
 import logging
+import os
 import os.path as osp
 import warnings
 from abc import ABCMeta, abstractmethod
@@ -90,8 +91,8 @@ class BaseRunner(metaclass=ABCMeta):
         # create work_dir
         if isinstance(work_dir, str):
             self.work_dir = osp.abspath(work_dir)
-	    if not osp.exists(self.work_dir):
-		os.makedirs(self.work_dir)
+        if not osp.exists(self.work_dir):
+    	    os.makedirs(self.work_dir)
 
         elif work_dir is None:
             self.work_dir = None
