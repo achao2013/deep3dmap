@@ -4,11 +4,11 @@ import platform
 import shutil
 import time
 import warnings
-from deeprecon.core import utils
+from deep3dmap.core import utils
 
 import torch
 
-import deeprecon.core as core
+import deep3dmap.core as core
 from .base_runner import BaseRunner
 from .builder import RUNNERS
 from .checkpoint import save_checkpoint

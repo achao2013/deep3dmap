@@ -4,7 +4,7 @@ import torch
 import torch.distributed as dist
 from mmcv.runner import init_dist
 
-from deeprecon import setup_runtime, Trainer, GAN2Shape
+from deep3dmap import setup_runtime, Trainer, GAN2Shape
 
 
 ## runtime arguments

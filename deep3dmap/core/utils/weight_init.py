@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from deeprecon.core.utils import Registry, build_from_cfg, get_logger, print_log
+from deep3dmap.core.utils import Registry, build_from_cfg, get_logger, print_log
 
 INITIALIZERS = Registry('initializer')
 
@@ -487,9 +487,9 @@ class PretrainedInit(object):
         self.map_location = map_location
 
     def __call__(self, module):
-        from deeprecon.runners import (_load_checkpoint_with_prefix, load_checkpoint,
+        from deep3dmap.runners import (_load_checkpoint_with_prefix, load_checkpoint,
                                  load_state_dict)
-        logger = get_logger('deeprecon')
+        logger = get_logger('deep3dmap')
         if self.prefix is None:
             print_log(f'load model from: {self.checkpoint}', logger=logger)
             load_checkpoint(

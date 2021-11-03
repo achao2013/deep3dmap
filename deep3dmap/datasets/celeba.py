@@ -20,7 +20,7 @@ from collections import OrderedDict
 from PIL import Image
 
 import numpy as np
-from deeprecon.core.utils import print_log
+from deep3dmap.core.utils import print_log
 
 @DATASETS.register_module()
 class CelebaDataset(CustomDataset):

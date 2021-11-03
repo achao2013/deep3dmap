@@ -1,12 +1,12 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import os.path as osp
 
-import deeprecon
+import deep3dmap
 import numpy as np
-from deeprecon.core.utils import fileio
+from deep3dmap.core.utils import fileio
 import pycocotools.mask as maskUtils
 
-from deeprecon.core.utils.mask_structures import BitmapMasks, PolygonMasks
+from deep3dmap.core.utils.mask_structures import BitmapMasks, PolygonMasks
 from ..builder import PIPELINES
 
 try:

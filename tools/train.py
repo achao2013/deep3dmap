@@ -10,26 +10,26 @@ import numpy as np
 
 
 import torch
-from deeprecon.core import Config, DictAction
-from deeprecon.runners import get_dist_info, init_dist
-from deeprecon.core.utils import get_git_hash
+from deep3dmap.core import Config, DictAction
+from deep3dmap.runners import get_dist_info, init_dist
+from deep3dmap.core.utils import get_git_hash
 
-from deeprecon.core import __version__
-from deeprecon.models import build_reconstruction
-from deeprecon.core.utils import collect_env, get_root_logger
-
-
+from deep3dmap.core import __version__
+from deep3dmap.models import build_reconstruction
+from deep3dmap.core.utils import collect_env, get_root_logger
 
 
-from deeprecon.runners import (HOOKS, DistSamplerSeedHook, EpochBasedRunner,
+
+
+from deep3dmap.runners import (HOOKS, DistSamplerSeedHook, EpochBasedRunner,
                           OptimizerHook,
                          build_runner)
-from deeprecon.core.utils import build_from_cfg
+from deep3dmap.core.utils import build_from_cfg
 
-from deeprecon.runners import DistEvalHook, EvalHook
-from deeprecon.datasets import (build_dataloader, build_dataset,
+from deep3dmap.runners import DistEvalHook, EvalHook
+from deep3dmap.datasets import (build_dataloader, build_dataset,
                             replace_ImageToTensor)
-from deeprecon.core.utils import get_root_logger
+from deep3dmap.core.utils import get_root_logger
 
 def set_random_seed(seed, deterministic=False):
     """Set random seed.
@@ -241,7 +241,7 @@ def main():
         cfg.merge_from_dict(args.cfg_options)
     # import modules from string list.
     if cfg.get('custom_imports', None):
-        from deeprecon.core.utils import import_modules_from_strings
+        from deep3dmap.core.utils import import_modules_from_strings
         import_modules_from_strings(**cfg['custom_imports'])
     # set cudnn_benchmark
     if cfg.get('cudnn_benchmark', False):

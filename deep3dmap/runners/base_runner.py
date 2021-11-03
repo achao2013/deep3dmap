@@ -15,7 +15,7 @@ from abc import ABCMeta, abstractmethod
 import torch
 from torch.optim import Optimizer
 
-import deeprecon.core
+import deep3dmap.core
 from ..parallel import is_module_wrapper
 from .checkpoint import load_checkpoint
 from .dist_utils import get_dist_info
@@ -280,7 +280,7 @@ class BaseRunner(metaclass=ABCMeta):
         """
         hook_cfg = hook_cfg.copy()
         priority = hook_cfg.pop('priority', 'NORMAL')
-        hook = deeprecon.core.build_from_cfg(hook_cfg, HOOKS)
+        hook = deep3dmap.core.build_from_cfg(hook_cfg, HOOKS)
         self.register_hook(hook, priority=priority)
 
     def call_hook(self, fn_name):
@@ -358,7 +358,7 @@ class BaseRunner(metaclass=ABCMeta):
         # Re-calculate the number of iterations when resuming
         # models with different number of GPUs
         if 'config' in checkpoint['meta']:
-            config = deeprecon.core.Config.fromstring(
+            config = deep3dmap.core.Config.fromstring(
                 checkpoint['meta']['config'], file_format='.py')
             previous_gpu_ids = config.get('gpu_ids', None)
             if previous_gpu_ids and len(previous_gpu_ids) > 0 and len(
@@ -401,7 +401,7 @@ class BaseRunner(metaclass=ABCMeta):
                 policy_type = policy_type.title()
             hook_type = policy_type + 'LrUpdaterHook'
             lr_config['type'] = hook_type
-            hook = deeprecon.core.build_from_cfg(lr_config, HOOKS)
+            hook = deep3dmap.core.build_from_cfg(lr_config, HOOKS)
         else:
             hook = lr_config
         self.register_hook(hook, priority='VERY_HIGH')
@@ -422,7 +422,7 @@ class BaseRunner(metaclass=ABCMeta):
                 policy_type = policy_type.title()
             hook_type = policy_type + 'MomentumUpdaterHook'
             momentum_config['type'] = hook_type
-            hook = deeprecon.core.build_from_cfg(momentum_config, HOOKS)
+            hook = deep3dmap.core.build_from_cfg(momentum_config, HOOKS)
         else:
             hook = momentum_config
         self.register_hook(hook, priority='HIGH')
@@ -432,7 +432,7 @@ class BaseRunner(metaclass=ABCMeta):
             return
         if isinstance(optimizer_config, dict):
             optimizer_config.setdefault('type', 'OptimizerHook')
-            hook = deeprecon.core.build_from_cfg(optimizer_config, HOOKS)
+            hook = deep3dmap.core.build_from_cfg(optimizer_config, HOOKS)
         else:
             hook = optimizer_config
         self.register_hook(hook, priority='ABOVE_NORMAL')
@@ -442,7 +442,7 @@ class BaseRunner(metaclass=ABCMeta):
             return
         if isinstance(checkpoint_config, dict):
             checkpoint_config.setdefault('type', 'CheckpointHook')
-            hook = deeprecon.core.build_from_cfg(checkpoint_config, HOOKS)
+            hook = deep3dmap.core.build_from_cfg(checkpoint_config, HOOKS)
         else:
             hook = checkpoint_config
         self.register_hook(hook, priority='NORMAL')
@@ -452,7 +452,7 @@ class BaseRunner(metaclass=ABCMeta):
             return
         log_interval = log_config['interval']
         for info in log_config['hooks']:
-            logger_hook = deeprecon.core.build_from_cfg(
+            logger_hook = deep3dmap.core.build_from_cfg(
                 info, HOOKS, default_args=dict(interval=log_interval))
             self.register_hook(logger_hook, priority='VERY_LOW')
 
@@ -461,7 +461,7 @@ class BaseRunner(metaclass=ABCMeta):
             return
         if isinstance(timer_config, dict):
             timer_config_ = copy.deepcopy(timer_config)
-            hook = deeprecon.core.build_from_cfg(timer_config_, HOOKS)
+            hook = deep3dmap.core.build_from_cfg(timer_config_, HOOKS)
         else:
             hook = timer_config
         self.register_hook(hook, priority='LOW')
@@ -484,7 +484,7 @@ class BaseRunner(metaclass=ABCMeta):
             return
         if isinstance(profiler_config, dict):
             profiler_config.setdefault('type', 'ProfilerHook')
-            hook = deeprecon.core.build_from_cfg(profiler_config, HOOKS)
+            hook = deep3dmap.core.build_from_cfg(profiler_config, HOOKS)
         else:
             hook = profiler_config
         self.register_hook(hook)

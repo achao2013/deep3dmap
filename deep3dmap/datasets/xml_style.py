@@ -6,9 +6,9 @@ import xml.etree.ElementTree as ET
 import numpy as np
 from PIL import Image
 
-from deeprecon import core
-from deeprecon.core import utils
-from deeprecon.core.utils import fileio
+from deep3dmap import core
+from deep3dmap.core import utils
+from deep3dmap.core.utils import fileio
 
 from .builder import DATASETS
 from .custom import CustomDataset

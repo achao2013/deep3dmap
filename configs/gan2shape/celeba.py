@@ -32,7 +32,7 @@ model = dict(
         ## GAN
         channel_multiplier= 1,
         gan_size= 128,
-        gan_ckpt= "checkpoints/stylegan2/stylegan2-celeba-config-e.pt",
+        gan_ckpt= "pre-model/gan2shape/stylegan2/stylegan2-celeba-config-e.pt",
         F1_d= 2,  # number of mapping network layers used to regularize the latent offset
 
         ## renderer

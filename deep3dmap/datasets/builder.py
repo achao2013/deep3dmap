@@ -5,9 +5,9 @@ import random
 from functools import partial
 
 import numpy as np
-from deeprecon.parallel import collate
-from deeprecon.runners import get_dist_info
-from deeprecon.core.utils import Registry, build_from_cfg
+from deep3dmap.parallel import collate
+from deep3dmap.runners import get_dist_info
+from deep3dmap.core.utils import Registry, build_from_cfg
 from torch.utils.data import DataLoader
 
 from .samplers import DistributedGroupSampler, DistributedSampler, GroupSampler

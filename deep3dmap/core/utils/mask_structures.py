@@ -8,11 +8,11 @@
 from abc import ABCMeta, abstractmethod
 
 import cv2
-import deeprecon.core.utils.fileio as fileio
+import deep3dmap.core.utils.fileio as fileio
 import numpy as np
 import pycocotools.mask as maskUtils
 import torch
-from deeprecon.core.ops.roi_align import roi_align
+from deep3dmap.core.ops.roi_align import roi_align
 
 
 class BaseInstanceMasks(metaclass=ABCMeta):
@@ -529,7 +529,7 @@ class BitmapMasks(BaseInstanceMasks):
             >>> print('self = {}'.format(self))
             self = BitmapMasks(num_masks=3, height=32, width=32)
         """
-        from deeprecon.core.utils.random_utils import ensure_rng
+        from deep3dmap.core.utils.random_utils import ensure_rng
         rng = ensure_rng(rng)
         masks = (rng.rand(num_masks, height, width) > 0.1).astype(dtype)
         self = cls(masks, height=height, width=width)
@@ -942,7 +942,7 @@ class PolygonMasks(BaseInstanceMasks):
             >>> self = PolygonMasks.random()
             >>> print('self = {}'.format(self))
         """
-        from deeprecon.core.utils.random_utils import ensure_rng
+        from deep3dmap.core.utils.random_utils import ensure_rng
         rng = ensure_rng(rng)
 
         def _gen_polygon(n, irregularity, spikeyness):

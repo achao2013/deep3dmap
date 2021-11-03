@@ -12,13 +12,13 @@ import platform
 import shutil
 import time
 import warnings
-from deeprecon.core import utils
-from deeprecon.runners import build_optimizer
+from deep3dmap.core import utils
+from deep3dmap.runners import build_optimizer
 import torch.distributed as dist
 
 import torch
 
-import deeprecon.core as core
+import deep3dmap.core as core
 from .base_runner import BaseRunner
 from .builder import RUNNERS
 from .checkpoint import save_checkpoint

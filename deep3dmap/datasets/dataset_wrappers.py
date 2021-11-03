@@ -6,7 +6,7 @@ import math
 from collections import defaultdict
 
 import numpy as np
-from deeprecon.core.utils import build_from_cfg, print_log
+from deep3dmap.core.utils import build_from_cfg, print_log
 from torch.utils.data.dataset import ConcatDataset as _ConcatDataset
 
 from .builder import DATASETS, PIPELINES

@@ -9,11 +9,11 @@
 import warnings
 
 
-from deeprecon.core.utils import Registry
+from deep3dmap.core.utils import Registry
 
 
-from deeprecon.runners import Sequential
-from deeprecon.core.utils import Registry, build_from_cfg
+from deep3dmap.runners import Sequential
+from deep3dmap.core.utils import Registry, build_from_cfg
 
 
 def build_model_from_cfg(cfg, registry, default_args=None):

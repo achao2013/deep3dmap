@@ -13,12 +13,12 @@ from logging import FileHandler
 
 import torch.nn as nn
 
-from deeprecon.runners.dist_utils import master_only
-from deeprecon.core.utils.logging import get_logger, logger_initialized, print_log
+from deep3dmap.runners.dist_utils import master_only
+from deep3dmap.core.utils.logging import get_logger, logger_initialized, print_log
 
 
 class BaseModule(nn.Module, metaclass=ABCMeta):
-    """Base module for all modules in deeprecon.
+    """Base module for all modules in deep3dmap.
 
     ``BaseModule`` is a wrapper of ``torch.nn.Module`` with additional
     functionality of parameter initialization. Compared with
@@ -97,12 +97,12 @@ class BaseModule(nn.Module, metaclass=ABCMeta):
                 sub_module._params_init_info = self._params_init_info
 
         # Get the initialized logger, if not exist,
-        # create a logger named `deeprecon`
+        # create a logger named `deep3dmap`
         logger_names = list(logger_initialized.keys())
-        logger_name = logger_names[0] if logger_names else 'deeprecon'
+        logger_name = logger_names[0] if logger_names else 'deep3dmap'
 
-        from deeprecon.core.utils import initialize
-        from deeprecon.core.utils.weight_init import update_init_info
+        from deep3dmap.core.utils import initialize
+        from deep3dmap.core.utils.weight_init import update_init_info
         module_name = self.__class__.__name__
         if not self._is_init:
             if self.init_cfg:
@@ -177,7 +177,7 @@ class BaseModule(nn.Module, metaclass=ABCMeta):
 
 
 class Sequential(BaseModule, nn.Sequential):
-    """Sequential module in deeprecon.
+    """Sequential module in deep3dmap.
 
     Args:
         init_cfg (dict, optional): Initialization config dict.
@@ -189,7 +189,7 @@ class Sequential(BaseModule, nn.Sequential):
 
 
 class ModuleList(BaseModule, nn.ModuleList):
-    """ModuleList in deeprecon.
+    """ModuleList in deep3dmap.
 
     Args:
         modules (iterable, optional): an iterable of modules to add.

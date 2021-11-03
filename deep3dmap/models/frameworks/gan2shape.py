@@ -12,11 +12,11 @@ import torchvision
 from torchvision import transforms
 
 from .. import networks
-from deeprecon.core.utils import utils
+from deep3dmap.core.utils import utils
 from pnpmodules.stylegan2 import Generator, Discriminator, PerceptualLoss
-from deeprecon.core.renderer import Renderer
-from deeprecon.models.losses import DiscriminatorLoss
-from deeprecon.parallel import MMDataParallel, MMDistributedDataParallel
+from deep3dmap.core.renderer import Renderer
+from deep3dmap.models.losses import DiscriminatorLoss
+from deep3dmap.parallel import MMDataParallel, MMDistributedDataParallel
 
 def map_func(storage, location):
     return storage.cpu()
@@ -270,11 +270,11 @@ class Gan2Shape():
 
     def init_parsing_model(self):
         if self.category in ['face', 'synface']:
-            from deeprecon.models.parsing import BiSeNet
+            from deep3dmap.models.parsing import BiSeNet
             self.parse_model = BiSeNet(n_classes=19)
             self.parse_model.load_state_dict(torch.load('checkpoints/parsing/bisenet.pth', map_location=map_func))
         else:
-            from deeprecon.models.parsing import PSPNet
+            from deep3dmap.models.parsing import PSPNet
             if self.category == 'church':
                 classes = 150
                 ckpt_path = 'checkpoints/parsing/pspnet_ade20k.pth'
