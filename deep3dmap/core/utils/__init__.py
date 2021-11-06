@@ -18,8 +18,7 @@ from .misc import (check_prerequisites, concat_list, deprecated_api_warning,
 from .path import (check_file_exist, fopen, is_filepath, mkdir_or_exist,
                    scandir, symlink)
 from .version_utils import digit_version, get_git_hash
-from .info import (get_compiler_version, get_compiling_cuda_version,
-                   get_onnxruntime_op_path)
+from .info import (get_compiler_version, get_compiling_cuda_version)
 from .flops_counter import get_model_complexity_info
 from .fuse_conv_bn import fuse_conv_bn
 from .sync_bn import revert_sync_batchnorm

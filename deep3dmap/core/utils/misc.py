@@ -35,7 +35,12 @@ to_3tuple = _ntuple(3)
 to_4tuple = _ntuple(4)
 to_ntuple = _ntuple
 
+def is_str(x):
+    """Whether the input is an string instance.
 
+    Note: This method is deprecated since python 2 is no longer supported.
+    """
+    return isinstance(x, str)
 
 def import_modules_from_strings(imports, allow_failed_imports=False):
     """Import modules from the given list of strings.
