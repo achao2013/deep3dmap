@@ -1,0 +1,3 @@
+include requirements/runtime.txt
+include deep3dmap/core/ops/csrc/common/cuda/*.cuh deep3dmap/core/ops/csrc/common/cuda/*.hpp deep3dmap/core/ops/csrc/common/*.hpp
+include deep3dmap/core/ops/csrc/pytorch/*.cpp deep3dmap/core/ops/csrc/pytorch/cuda/*.cu
