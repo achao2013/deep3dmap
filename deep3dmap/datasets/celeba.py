@@ -37,12 +37,14 @@ class CelebaDataset(CustomDataset):
                  joint_train=False,
                  independent=True,
                  pipeline=None,
+                 crop=None,
                  filter_empty_gt=True):
         self.test_mode = test_mode
         self.filter_empty_gt = filter_empty_gt
         self.joint_train=joint_train
         self.load_gt_depth=load_gt_depth
         self.independent=independent
+        self.crop=crop
         self.image_size = image_size
         self.epoch=0
         self.distributed = distributed
@@ -62,11 +64,15 @@ class CelebaDataset(CustomDataset):
         if self.independent:
             assert len(self.img_list) % self.world_size == 0
 
-
+        self.image_path=None
+        self.gt_depth_path=None
+        self.w_path=None
 
         # processing pipeline
         self.pipeline = Compose(pipeline)
 
+    def __len__(self):
+        return len(self.img_list)
     def load_data(self):
         transform = transforms.Compose(
             [
@@ -116,13 +122,16 @@ class CelebaDataset(CustomDataset):
             self.img_idx = 0
             self.idx_perm = torch.LongTensor(list(range(self.img_num)))
         else:
+            self.img_num = len(self.image_path)
             if type(self.image_path) is list:
                 assert len(self.image_path) == self.world_size
+                
                 self.image_path = self.image_path[self.rank]
                 if self.load_gt_depth:
                     self.gt_depth_path = self.gt_depth_path[self.rank]
-            print("Loading images...")
+            print("Loading images...")           
             self.input_im = load_image(self.image_path)
+            self.input_im_all = [self.input_im]
             if self.load_gt_depth:
                 self.depth_gt = load_depth(self.gt_depth_path)
 
@@ -152,11 +161,23 @@ class CelebaDataset(CustomDataset):
                     assert len(self.w_path) == self.world_size
                     self.w_path = self.w_path[self.rank]
                 self.latent_w = get_w_img(self.w_path)
+                self.latent_w_all= [self.latent_w]
 
-    def setup_input(self, image_path, gt_depth_path, latent_path):
-        self.image_path = image_path
-        self.gt_depth_path = gt_depth_path
-        self.w_path = latent_path
+    def setup_input(self, idx=None, epoch=None):
+        if idx==None and epoch==None:
+            self.image_path = self.img_list
+            self.gt_depth_path = self.depth_list if self.load_gt_depth else None
+            self.w_path = self.latent_list
+        elif idx is not None:
+            self.image_path=self.img_list[idx:idx+self.world_size]
+            self.gt_depth_path=self.depth_list[idx:idx+self.world_size] if self.load_gt_depth else None
+            self.w_path=self.latent_list[idx:idx+self.world_size]
+        elif epoch is not None:
+            self.image_path=   self.img_list[epoch]
+            self.gt_depth_path=self.depth_list[epoch] if self.load_gt_depth else None
+            self.w_path=self.latent_list[epoch]
+        else:
+            print('setup_input param error')
         self.load_data()
         self.load_latent()
 
@@ -219,3 +240,15 @@ class CelebaDataset(CustomDataset):
         results = dict(img_info=img_info)
         self.pre_pipeline(results)
         return self.pipeline(results)
+
+    def __repr__(self):
+        """Print the number of instance number."""
+        dataset_type = 'Test' if self.test_mode else 'Train'
+        result = (f'\n{self.__class__.__name__} {dataset_type} dataset '
+                  f'with number of images {len(self)} \n')
+        if self.CLASSES is None:
+            result += 'Category names are not provided. \n'
+        else:
+            result += f'Include category {self.CLASSES} \n'
+        return result
+        

@@ -1,10 +1,10 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 from collections.abc import Sequence
 
-import mmcv
+import deep3dmap
 import numpy as np
 import torch
-from mmcv.parallel import DataContainer as DC
+from deep3dmap.parallel import DataContainer as DC
 
 from ..builder import PIPELINES
 
@@ -24,7 +24,7 @@ def to_tensor(data):
         return data
     elif isinstance(data, np.ndarray):
         return torch.from_numpy(data)
-    elif isinstance(data, Sequence) and not mmcv.is_str(data):
+    elif isinstance(data, Sequence) and not deep3dmap.is_str(data):
         return torch.tensor(data)
     elif isinstance(data, int):
         return torch.LongTensor([data])
@@ -134,12 +134,12 @@ class Transpose:
 
 @PIPELINES.register_module()
 class ToDataContainer:
-    """Convert results to :obj:`mmcv.DataContainer` by given fields.
+    """Convert results to :obj:`deep3dmap.DataContainer` by given fields.
 
     Args:
         fields (Sequence[dict]): Each field is a dict like
             ``dict(key='xxx', **kwargs)``. The ``key`` in result will
-            be converted to :obj:`mmcv.DataContainer` with ``**kwargs``.
+            be converted to :obj:`deep3dmap.DataContainer` with ``**kwargs``.
             Default: ``(dict(key='img', stack=True), dict(key='gt_bboxes'),
             dict(key='gt_labels'))``.
     """
@@ -151,14 +151,14 @@ class ToDataContainer:
 
     def __call__(self, results):
         """Call function to convert data in results to
-        :obj:`mmcv.DataContainer`.
+        :obj:`deep3dmap.DataContainer`.
 
         Args:
             results (dict): Result dict contains the data to convert.
 
         Returns:
             dict: The result dict contains the data converted to \
-                :obj:`mmcv.DataContainer`.
+                :obj:`deep3dmap.DataContainer`.
         """
 
         for field in self.fields:
@@ -282,7 +282,7 @@ class Collect:
     Args:
         keys (Sequence[str]): Keys of results to be collected in ``data``.
         meta_keys (Sequence[str], optional): Meta keys to be converted to
-            ``mmcv.DataContainer`` and collected in ``data[img_metas]``.
+            ``deep3dmap.DataContainer`` and collected in ``data[img_metas]``.
             Default: ``('filename', 'ori_filename', 'ori_shape', 'img_shape',
             'pad_shape', 'scale_factor', 'flip', 'flip_direction',
             'img_norm_cfg')``
@@ -298,7 +298,7 @@ class Collect:
 
     def __call__(self, results):
         """Call function to collect keys in results. The keys in ``meta_keys``
-        will be converted to :obj:mmcv.DataContainer.
+        will be converted to :obj:deep3dmap.DataContainer.
 
         Args:
             results (dict): Result dict contains the data to collect.
@@ -315,8 +315,10 @@ class Collect:
         for key in self.meta_keys:
             img_meta[key] = results[key]
         data['img_metas'] = DC(img_meta, cpu_only=True)
+        
         for key in self.keys:
-            data[key] = results[key]
+            if key in results:
+                data[key] = results[key]
         return data
 
     def __repr__(self):

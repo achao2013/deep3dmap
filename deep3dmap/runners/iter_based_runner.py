@@ -8,7 +8,7 @@ import warnings
 import torch
 from torch.optim import Optimizer
 
-import mmcv
+import deep3dmap
 from .base_runner import BaseRunner
 from .builder import RUNNERS
 from .checkpoint import save_checkpoint
@@ -95,7 +95,7 @@ class IterBasedRunner(BaseRunner):
                 1000 iterations for validation, iteratively.
         """
         assert isinstance(data_loaders, list)
-        assert mmcv.is_list_of(workflow, tuple)
+        assert deep3dmap.is_list_of(workflow, tuple)
         assert len(data_loaders) == len(workflow)
         if max_iters is not None:
             warnings.warn(
@@ -204,7 +204,7 @@ class IterBasedRunner(BaseRunner):
             # Note: meta.update(self.meta) should be done before
             # meta.update(epoch=self.epoch + 1, iter=self.iter) otherwise
             # there will be problems with resumed checkpoints.
-            # More details in https://github.com/open-mmlab/mmcv/pull/1108
+            # More details in https://github.com/open-mmlab/deep3dmap/pull/1108
         meta.update(epoch=self.epoch + 1, iter=self.iter)
 
         filename = filename_tmpl.format(self.iter + 1)
@@ -216,7 +216,7 @@ class IterBasedRunner(BaseRunner):
         if create_symlink:
             dst_file = osp.join(out_dir, 'latest.pth')
             if platform.system() != 'Windows':
-                mmcv.symlink(filename, dst_file)
+                deep3dmap.symlink(filename, dst_file)
             else:
                 shutil.copy(filepath, dst_file)
 

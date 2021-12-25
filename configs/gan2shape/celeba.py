@@ -1,6 +1,17 @@
 #main
 work_dir="results/celeba"
 distributed=True
+dist_params = dict(backend='nccl')
+checkpoint_config = dict(interval=1)
+log_level = 'INFO'
+log_config = dict(
+    interval=50,
+    hooks=[
+        dict(type='TextLoggerHook'),
+        # dict(type='TensorboardLoggerHook')
+    ])
+resume_from = None
+load_from = None
 
 # model settings
 model = dict(
@@ -10,6 +21,8 @@ model = dict(
         category= "face",
         distributed=distributed,
         share_weight= False,  # true: share weight in distributed training
+        flip1_cfg= [False, False, False, False],
+        flip3_cfg= [True, False, False, False],
         relative_enc= True,  # true: use relative latent offset
         use_mask= False,
         add_mean_L= True,
@@ -25,9 +38,14 @@ model = dict(
         lam_perc= 0.5,
         lam_smooth= 0.01,
         lam_regular= 0.01,
-        pretrain= "pre-model/gan2shape/celeba_pretrain.pt",
+        pretrain= "pre-model/gan2shape/celeba_pretrain.pth",
         view_mvn_path= "pre-model/gan2shape/view_light/celeba_view_mvn.pth",
         light_mvn_path= "pre-model/gan2shape/view_light/celeba_light_mvn.pth",
+        #category in ['face', 'synface']
+        parsing_model_path="pre-model/gan2shape/parsing/bisenet.pth",
+        #category == 'church'
+        #parsing_model_path="pre-model/gan2shape/parsing/pspnet_ade20k.pth",
+        #parsing_model_path="pre-model/gan2shape/parsing/pspnet_voc.pth",
         rand_light= [-1,1,-0.2,0.8,-0.1,0.6,-0.6],
         ## GAN
         channel_multiplier= 1,
@@ -45,6 +63,7 @@ model = dict(
 dataset_type = 'CelebaDataset'
 train_pipeline = []
 test_pipeline = []
+use_data_loaders=False
 data = dict(
     samples_per_gpu=16,
     workers_per_gpu=4,
@@ -60,26 +79,34 @@ data = dict(
     val=dict(pipeline=test_pipeline))
 
 ##runner settings
-workflow = [('train', 1)]
-runner = dict(type='Gan2ShapeRunner', 
-    distributed=distributed,
-    checkpoint_dir = 'results/celeba/checkpoints',
-    save_checkpoint_freq= 500,
-    keep_num_checkpoint= 1,
-    use_logger= True,
-    log_freq= 100,
-    joint_train= False,  # True: joint train on multiple images
-    independent= True,  # True: each process has a different input image
-    reset_weight= True,  # True: reset model weights after each epoch
-    save_results= True,
-    num_stage= 4,
-    flip1_cfg= [False, False, False, False],
-    flip3_cfg= [True, False, False, False],
-    stage_len_dict = dict(step1= 600,step2= 600,step3= 400),
-    stage_len_dict2 = dict(step1= 200,step2= 500,step3= 300),
-    max_epochs=300)
 
-optimizer = dict(
-    type='Adam',
-    lr=0.0001, betas=(0.9, 0.999), weight_decay=5e-4)
+optimizer_config = dict(grad_clip=None)
+lr_config = dict(
+    policy='step',
+    warmup='linear',
+    warmup_iters=500,
+    warmup_ratio=0.001,
+    step=[8])
+workflow = [('train', 1)]
+runner = dict(
+    type='Gan2ShapeRunner', 
+    runner_cfgs=dict(
+        distributed=distributed,
+        checkpoint_dir = 'results/celeba/checkpoints',
+        save_checkpoint_freq= 500,
+        keep_num_checkpoint= 1,
+        use_logger= True,
+        log_freq= 100,
+        joint_train= False,  # True: joint train on multiple images
+        independent= True,  # True: each process has a different input image
+        reset_weight= True,  # True: reset model weights after each epoch
+        save_results= True,
+        num_stage= 4,
+        stage_len_dict = dict(step1= 600,step2= 600,step3= 400),
+        stage_len_dict2 = dict(step1= 200,step2= 500,step3= 300),
+        optimizer = dict(type='Adam',
+                    lr=0.0001, betas=(0.9, 0.999), weight_decay=5e-4),
+        max_epochs=300))
+
+
 

@@ -14,7 +14,18 @@ try:
 except ModuleNotFoundError:
     cmd_class = {}
     print('Skip building ext ops due to the absence of torch.')
+print(EXT_TYPE,cmd_class)
 
+def choose_requirement(primary, secondary):
+    """If some version of primary requirement installed, return primary, else
+    return secondary."""
+    try:
+        name = re.split(r'[!<>=]', primary)[0]
+        get_distribution(name)
+    except DistributionNotFound:
+        return secondary
+
+    return str(primary)
 
 def parse_requirements(fname='requirements/runtime.txt', with_version=True):
     """Parse the package dependencies listed in a requirements file but strips
@@ -91,10 +102,10 @@ def parse_requirements(fname='requirements/runtime.txt', with_version=True):
     return packages
 
 
-#install_requires = parse_requirements()
-#print("install_requires:",install_requires)
+install_requires = parse_requirements()
+print("install_requires:",install_requires)
 
-""" try:
+try:
     # OpenCV installed via conda.
     import cv2  # NOQA: F401
     major, minor, *rest = cv2.__version__.split('.')
@@ -106,13 +117,13 @@ except ImportError:
     CHOOSE_INSTALL_REQUIRES = [('opencv-python-headless>=3',
                                 'opencv-python>=3')]
     for main, secondary in CHOOSE_INSTALL_REQUIRES:
-        install_requires.append(choose_requirement(main, secondary)) """
+        install_requires.append(choose_requirement(main, secondary))
 
 
 def get_extensions():
     extensions = []
     if True:
-        ext_name = 'deepmap3d._ext'
+        ext_name = 'deep3dmap._ext'
         from torch.utils.cpp_extension import CppExtension, CUDAExtension
 
         # prevent ninja from using too many resources
@@ -136,7 +147,7 @@ def get_extensions():
         except ImportError:
             pass
 
-        project_dir = 'mmcv/ops/csrc/'
+        project_dir = 'deep3dmap/core/ops/csrc/'
         if is_rocm_pytorch:
             from torch.utils.hipify import hipify_python
 
@@ -181,12 +192,17 @@ def get_extensions():
             define_macros=define_macros,
             extra_compile_args=extra_compile_args)
         extensions.append(ext_ops)
+        print("extension:",extension)
+        print("extensions:",extensions)
+
+    return extensions
+ext_modules=get_extensions()
 
 setup(
     name='deep3dmap' if os.getenv('WITH_OPS', '0') == '0' else 'deep3dmap-full',
-    ext_modules=get_extensions(),
+    packages=find_packages(),
+    include_package_data=True,
+    install_requires=install_requires,
+    ext_modules=ext_modules,
     cmdclass=cmd_class,
     zip_safe=False)
-    #packages=find_packages(),
-    #include_package_data=True,
-    #install_requires=install_requires,

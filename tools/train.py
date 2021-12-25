@@ -17,7 +17,7 @@ from deep3dmap.core.utils import get_git_hash
 from deep3dmap.core import __version__
 from deep3dmap.models import build_reconstruction
 from deep3dmap.core.utils import collect_env, get_root_logger
-
+from deep3dmap.parallel import MMDataParallel, MMDistributedDataParallel
 
 
 
@@ -51,7 +51,7 @@ def set_random_seed(seed, deterministic=False):
 
 
 def train_reconstruction(model,
-                   dataset,
+                   datasets,
                    cfg,
                    distributed=False,
                    validate=False,
@@ -60,7 +60,7 @@ def train_reconstruction(model,
     logger = get_root_logger(log_level=cfg.log_level)
 
     # prepare data loaders
-    dataset = dataset if isinstance(dataset, (list, tuple)) else [dataset]
+    datasets = datasets if isinstance(datasets, (list, tuple)) else [datasets]
     if cfg.use_data_loaders:
         data_loaders = [
         build_dataloader(
@@ -70,10 +70,23 @@ def train_reconstruction(model,
             # cfg.gpus will be ignored if distributed
             len(cfg.gpu_ids),
             dist=distributed,
-            seed=cfg.seed) for ds in dataset
+            seed=cfg.seed) for ds in datasets
         ]
 
-
+    if cfg.model.type not in ['Gan2Shape']:
+        # put model on gpus
+        if distributed:
+            find_unused_parameters = cfg.get('find_unused_parameters', False)
+            # Sets the `find_unused_parameters` parameter in
+            # torch.nn.parallel.DistributedDataParallel
+            model = MMDistributedDataParallel(
+                model.cuda(),
+                device_ids=[torch.cuda.current_device()],
+                broadcast_buffers=False,
+                find_unused_parameters=find_unused_parameters)
+        else:
+            model = MMDataParallel(
+                model.cuda(cfg.gpu_ids[0]), device_ids=cfg.gpu_ids)
 
     # build runner
     
@@ -94,15 +107,14 @@ def train_reconstruction(model,
         cfg.runner,
         default_args=dict(
             model=model,
-            optimizer=cfg.optimizer,
             work_dir=cfg.work_dir,
             logger=logger,
             meta=meta))
             
     if cfg.use_data_loaders:
         runner.data_loaders=data_loaders
-    else:#use dataset which load data in single machine
-        runner.dataset=dataset
+    else:#use datasets which load data in single machine
+        runner.datasets=datasets
         
 
     # an ugly workaround to make .log and .log.json filenames the same
@@ -165,7 +177,7 @@ def train_reconstruction(model,
     elif cfg.load_from:
         runner.load_checkpoint(cfg.load_from)
     
-    runner.run(cfg.workflow)
+    runner.run(cfg.use_data_loaders, cfg.workflow)
 
 
 def parse_args():

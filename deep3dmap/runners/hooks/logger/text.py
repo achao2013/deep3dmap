@@ -6,7 +6,7 @@ from collections import OrderedDict
 import torch
 import torch.distributed as dist
 
-import mmcv
+import deep3dmap.core.utils.fileio.io
 from ..hook import HOOKS
 from .base import LoggerHook
 
@@ -133,7 +133,7 @@ class TextLoggerHook(LoggerHook):
         # only append log at last line
         if runner.rank == 0:
             with open(self.json_log_path, 'a+') as f:
-                mmcv.dump(json_log, f, file_format='json')
+                deep3dmap.core.utils.fileio.io.dump(json_log, f, file_format='json')
                 f.write('\n')
 
     def _round_float(self, items):

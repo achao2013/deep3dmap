@@ -4,8 +4,9 @@ import warnings
 import torch
 from torch.nn import GroupNorm, LayerNorm
 
-from mmcv.utils import _BatchNorm, _InstanceNorm, build_from_cfg, is_list_of
-from mmcv.utils.ext_loader import check_ops_exist
+from deep3dmap.core.utils import _BatchNorm, _InstanceNorm
+from deep3dmap.core.utils import build_from_cfg, is_list_of
+from deep3dmap.core.utils.ext_loader import check_ops_exist
 from .builder import OPTIMIZER_BUILDERS, OPTIMIZERS
 
 

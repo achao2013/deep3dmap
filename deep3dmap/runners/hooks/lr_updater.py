@@ -2,7 +2,7 @@
 import numbers
 from math import cos, pi
 
-import mmcv
+import deep3dmap.core.utils
 from .hook import HOOKS, Hook
 
 
@@ -179,7 +179,7 @@ class StepLrUpdaterHook(LrUpdaterHook):
 
     def __init__(self, step, gamma=0.1, min_lr=None, **kwargs):
         if isinstance(step, list):
-            assert mmcv.is_list_of(step, int)
+            assert deep3dmap.core.utils.is_list_of(step, int)
             assert all([s > 0 for s in step])
         elif isinstance(step, int):
             assert step > 0

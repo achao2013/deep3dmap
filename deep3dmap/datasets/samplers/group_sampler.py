@@ -3,7 +3,7 @@ import math
 
 import numpy as np
 import torch
-from mmcv.runner import get_dist_info
+from deep3dmap.runners import get_dist_info
 from torch.utils.data import Sampler
 
 

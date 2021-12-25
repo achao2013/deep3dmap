@@ -4,12 +4,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
-
+from deep3dmap.runners.base_module import BaseModule
 
 EPS = 1e-7
 
 
-class EDDeconv(nn.Module):
+class EDDeconv(BaseModule):
     def __init__(self, cin, cout, size=64, zdim=128, nf=64, gn_base=16, activation=nn.Tanh):
         super(EDDeconv, self).__init__()
         extra = int(np.log2(size) - 6)
@@ -87,7 +87,7 @@ class EDDeconv(nn.Module):
         return self.network(input)
 
 
-class Encoder(nn.Module):
+class Encoder(BaseModule):
     def __init__(self, cin, cout, size=64, nf=64, activation=nn.Tanh):
         super(Encoder, self).__init__()
         extra = int(np.log2(size) - 6)
@@ -140,7 +140,7 @@ class ResBlockDown(nn.Module):
         return x + h
 
 
-class ResEncoder(nn.Module):
+class ResEncoder(BaseModule):
     def __init__(self, cin, cout, size=128, nf=16, activation=None):
         super(ResEncoder, self).__init__()
         network = [

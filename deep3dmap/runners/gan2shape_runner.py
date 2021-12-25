@@ -13,7 +13,7 @@ import shutil
 import time
 import warnings
 from deep3dmap.core import utils
-from deep3dmap.runners import build_optimizer
+from deep3dmap.runners.optimizer import build_optimizer
 import torch.distributed as dist
 
 import torch
@@ -31,22 +31,22 @@ class Gan2ShapeRunner(BaseRunner):
 
     This runner train models epoch by epoch.
     """
-    def __init__(self, runner_cfgs, model):
-        super(Gan2ShapeRunner).__init__(model)
+    def __init__(self, runner_cfgs, model,work_dir=None,
+            logger=None,
+            meta=None):
+        super().__init__(model, None, work_dir, logger, meta, None, None)
         # basic parameters
         self.distributed = runner_cfgs.get('distributed')
-        self.rank = dist.get_rank() if self.distributed else 0
-        self.world_size = dist.get_world_size() if self.distributed else 1
         self.checkpoint_dir = runner_cfgs.get('checkpoint_dir', 'results')
         self.save_checkpoint_freq = runner_cfgs.get('save_checkpoint_freq', 1)
         self.keep_num_checkpoint = runner_cfgs.get('keep_num_checkpoint', 2)  # -1 for keeping all checkpoints
         self.use_logger = runner_cfgs.get('use_logger', True)
         self.log_freq = runner_cfgs.get('log_freq', 1000)
-        self.make_metrics = lambda m=None, mode='moving': meters.StandardMetrics(m, mode)
-        #self.model = model(runner_cfgs)
+        self.make_metrics = lambda m=None, mode='moving': core.utils.meters.StandardMetrics(m, mode)
+        self.model = model
 
-        self.dataset = None
-        self.data_loader = None
+        self.datasets = [None]
+        self.data_loaders = [None]
 
         # functional parameters
         self.joint_train = runner_cfgs.get('joint_train', False)  # True: joint train on multiple images
@@ -58,16 +58,16 @@ class Gan2ShapeRunner(BaseRunner):
         self.num_stage = runner_cfgs.get('num_stage')
         self.stage_len_dict = runner_cfgs.get('stage_len_dict')
         self.stage_len_dict2 = runner_cfgs.get('stage_len_dict2', None)
-        self.flip1_cfg = runner_cfgs.get('flip1_cfg', [False, False, False])
-        self.flip3_cfg = runner_cfgs.get('flip3_cfg', [False, False, False])
+
+        
 
         self.mode_seq = ['step1', 'step2', 'step3']
         self.current_stage = 0
         self.count = 0
+        self.model.model_cfgs['num_stage']=self.num_stage
+        self.model.setup_state(self.current_stage)
 
-        self.setup_state()
-
-        if self.save_results and self.rank == 0:
+        if self.save_results and self._rank == 0:
             img_save_path = self.checkpoint_dir + '/images'
             if not os.path.exists(img_save_path):
                 os.makedirs(img_save_path)
@@ -103,55 +103,47 @@ class Gan2ShapeRunner(BaseRunner):
         for optim_name in self.optimizer_names:
             getattr(self, optim_name).step()
 
-    def setup_data(self, epoch):
+    def setup_data(self, epoch, wf_i):
         if self.joint_train:
-            self.dataset.setup_input(self.img_list,
-                                    self.depth_list if self.load_gt_depth else None,
-                                    self.latent_list)
+            self.datasets[wf_i].setup_input()
             
         elif self.independent:
-            idx = epoch * self.world_size
-            self.dataset.setup_input(self.img_list[idx:idx+self.world_size],
-                                    self.depth_list[idx:idx+self.world_size] if self.load_gt_depth else None,
-                                    self.latent_list[idx:idx+self.world_size])
+            idx = epoch * self._world_size
+            self.datasets[wf_i].setup_input(idx=idx)
         else:
-            self.dataset.setup_input(self.img_list[epoch],
-                                    self.depth_list[epoch] if self.load_gt_depth else None,
-                                    self.latent_list[epoch])
-        self.model.setup_target(self.dataset.img_num, self.dataset.input_im, self.dataset.input_im_all, 
-            self.dataset.w_path, self.dataset.latent_w, self.dataset.latent_w_all)
+            self.datasets[wf_i].setup_input(epoch=epoch)
+        self.model.setup_target(self.datasets[wf_i].img_num, self.datasets[wf_i].input_im, self.datasets[wf_i].input_im_all, 
+            self.datasets[wf_i].w_path, self.datasets[wf_i].latent_w, self.datasets[wf_i].latent_w_all)
 
-    def setup_mode(self):
+    def setup_mode(self, dataset):
         stage_len_dict = self.stage_len_dict if self.current_stage == 0 else self.stage_len_dict2
         if self.count >= stage_len_dict[self.model.mode]:
-            if (self.independent or self.rank == 0) and self.save_results:
+            if (self.independent or self._rank == 0) and self.save_results:
                 if self.model.mode == 'step3':
-                    self.model.save_results(self.current_stage+1)
+                    self.model.save_results(dataset, self.current_stage+1)
                 elif self.model.mode == 'step2' and self.current_stage == 0:
-                    self.model.save_results(self.current_stage)
+                    self.model.save_results(dataset, self.current_stage)
             if self.model.mode == 'step1' and self.joint_train:
                 # collect results in step1
-                self.model.step1_collect()
+                self.model.step1_collect(dataset)
             if self.model.mode == 'step2':
                 # collect projected samples
-                self.model.step2_collect()
+                self.model.step2_collect(dataset)
             if self.model.mode == self.mode_seq[-1]:  # finished a stage
                 self.current_stage += 1
                 if self.current_stage >= self.num_stage:
                     return -1
-                self.setup_state()
+                self.model.setup_state(self.current_stage)
             idx = self.mode_seq.index(self.model.mode)
             next_mode = self.mode_seq[(idx + 1) % len(self.mode_seq)]
             self.model.mode = next_mode
-            self.model.init_optimizers()
+            self.init_optimizers()
             self.metrics.reset()
             self.count = 0
         self.count += 1
         return 1
 
-    def setup_state(self):
-        self.model.flip1 = self.flip1_cfg[self.current_stage]
-        self.model.flip3 = self.flip3_cfg[self.current_stage]
+
 
     def reset_state(self):
         self.current_stage = 0
@@ -159,49 +151,71 @@ class Gan2ShapeRunner(BaseRunner):
         self.model.mode = 'step1'
         if self.reset_weight:
             self.model.reset_model_weight()
-        self.model.init_optimizers()
+        self.init_optimizers()
         self.model.canon_mask = None
-        self.setup_state()
+        self.model.setup_state(self.current_stage)
 
     def run_iter(self, data_batch, train_mode, **kwargs):
         if train_mode:
-            state = self.setup_mode()
-            if state < 0:
-                self.metrics_all.update(m, 1)
+            i=0
+            while True:
+                state = self.setup_mode(self.datasets[0])
+                if state < 0:
+                    self.metrics_all.update(outputs, 1)
+                    if self._rank == 0:
+                        print(f"{'Epoch'}{self.epoch:05}/{self.metrics_all}")
+                        #self.save_checkpoint(self.iteration_all)
+                    break
+                outputs = self.model.forward(self.datasets[0])
+                self.backward()
+                if self.distributed:
+                    for k, v in outputs.items():
+                        if type(v) == torch.Tensor:
+                            dist.all_reduce(v)
+                            outputs[k] = v / dist.get_world_size()
+
+                self.metrics.update(outputs, 1)
                 if self.rank == 0:
-                    print(f"{'Epoch'}{self.epoch:05}/{self.metrics_all}")
-                    self.save_checkpoint(self.iteration_all)
-                return
-            m = self.model.forward()
-            self.backward()
-            #outputs = self.model.train_step(data_batch, self.optimizer,
-            #                                **kwargs)
+                    print(f"{'E'}{self.epoch:04}/{'T'}{i:05}/{self.model.mode}/{self.metrics}")
+                #outputs = self.model.train_step(data_batch, self.optimizer,
+                #                                **kwargs)
+                if self.joint_train:
+                        self.model.next_image(self.datasets[0])
+                i+=1
         else:
             outputs = self.model.val_step(data_batch, self.optimizer, **kwargs)
         if not isinstance(outputs, dict):
             raise TypeError('"model.train_step()"'
                             'and "model.val_step()" must return a dict')
-        if 'log_vars' in outputs:
-            self.log_buffer.update(outputs['log_vars'], outputs['num_samples'])
+
         self.outputs = outputs
 
-    def train(self, data_loader, **kwargs):
+    def train(self, use_data_loader, wf_i, **kwargs):
         self.model.train()
         self.mode = 'train'
-        self.data_loader = data_loader
+        
         self.reset_state()
-        self.setup_data(self.epoch)
+        self.setup_data(self.epoch, wf_i)
         self.metrics.reset()
 
         #self._max_iters = self._max_epochs * len(self.data_loader)
         #self.call_hook('before_train_epoch')
         time.sleep(2)  # Prevent possible deadlock during epoch transition
-        for i, data_batch in enumerate(self.data_loader):
-            self._inner_iter = i
-            #self.call_hook('before_train_iter')
-            self.run_iter(data_batch, train_mode=True, **kwargs)
-            #self.call_hook('after_train_iter')
-            self._iter += 1
+        if use_data_loader:
+            for i, data_batch in enumerate(self.data_loader):
+                self._inner_iter = i
+                #self.call_hook('before_train_iter')
+                self.run_iter(data_batch, train_mode=True, **kwargs)
+                #self.call_hook('after_train_iter')
+                self._iter += 1
+        else:
+            #for i, data_batch in enumerate(self.datasets[wf_i]):
+            for i in range(1):
+                self._inner_iter = i
+                #self.call_hook('before_train_iter')
+                self.run_iter(None, train_mode=True, **kwargs)
+                #self.call_hook('after_train_iter')
+                self._iter += 1
             
 
         #self.call_hook('after_train_epoch')
@@ -222,43 +236,48 @@ class Gan2ShapeRunner(BaseRunner):
 
         self.call_hook('after_val_epoch')
 
-    def run(self, data_loaders, workflow, max_epochs=None, **kwargs):
+    def run(self, use_data_loaders, workflow, max_epochs=None, **kwargs):
         """Start running.
 
         Args:
-            data_loaders (list[:obj:`DataLoader`]): Dataloaders for training
+            use_data_loaders (bool): Dataloaders for training
                 and validation.
             workflow (list[tuple]): A list of (phase, epochs) to specify the
                 running order and epochs. E.g, [('train', 2), ('val', 1)] means
                 running 2 epochs for training and 1 epoch for validation,
                 iteratively.
         """
-        self.model.init_optimizers()
-        assert isinstance(data_loaders, list)
+        self.init_optimizers()
         assert core.is_list_of(workflow, tuple)
-        assert len(data_loaders) == len(workflow)
+        if use_data_loaders:
+            assert isinstance(self.data_loaders, list)
+            assert len(self.data_loaders) == len(workflow)
+        
+        
         if max_epochs is not None:
             warnings.warn(
                 'setting max_epochs in run is deprecated, '
                 'please set max_epochs in runner_config', DeprecationWarning)
             self._max_epochs = max_epochs
 
-        """
-            if self.joint_train:
-                self._max_epochs = 1
-            elif self.independent:
-                self._max_epochs = len(self.img_list) // self.world_size
-            else:
-                self._max_epochs = len(self.img_list)
-        """
 
-        assert self._max_epochs is not None, (
-            'max_epochs must be specified during instantiation')
 
         for i, flow in enumerate(workflow):
             mode, epochs = flow
+            if self.joint_train:
+                self._max_epochs = 1
+            elif self.independent:
+                if use_data_loaders:
+                    self._max_epochs = len(self.data_loaders[i]) // self._world_size
+                else:
+                    self._max_epochs = len(self.datasets[i]) // self._world_size
+            else:
+                self._max_epochs = len(self.datasets[i])
             if mode == 'train':
-                self._max_iters = self._max_epochs * len(data_loaders[i])
+                if use_data_loaders:
+                    self._max_iters = self._max_epochs * len(self.data_loaders[i])
+                else:
+                    self._max_iters = self._max_epochs * len(self.datasets[i])
                 break
 
         work_dir = self.work_dir if self.work_dir is not None else 'NONE'
@@ -289,7 +308,7 @@ class Gan2ShapeRunner(BaseRunner):
                 for _ in range(epochs):
                     if mode == 'train' and self.epoch >= self._max_epochs:
                         break
-                    epoch_runner(data_loaders[i], **kwargs)
+                    epoch_runner(use_data_loaders, i,  **kwargs)
 
         time.sleep(1)  # wait for some hooks like loggers to finish
         #self.call_hook('after_run')

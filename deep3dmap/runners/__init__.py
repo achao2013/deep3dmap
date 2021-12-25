@@ -16,6 +16,7 @@ from .default_constructor import DefaultRunnerConstructor
 from .dist_utils import (allreduce_grads, allreduce_params, get_dist_info,
                          init_dist, master_only)
 from .epoch_based_runner import EpochBasedRunner
+from .gan2shape_runner import Gan2ShapeRunner
 from .hooks import (HOOKS, CheckpointHook, ClosureHook, DistEvalHook,
                     DistSamplerSeedHook, DvcliveLoggerHook, EMAHook, EvalHook,
                     GradientCumulativeOptimizerHook, Hook, IterTimerHook,
@@ -47,5 +48,5 @@ __all__ = [
     'allreduce_params', 'CheckpointLoader', 'BaseModule',
     '_load_checkpoint_with_prefix', 'EvalHook', 'DistEvalHook', 'Sequential',
     'ModuleList', 'GradientCumulativeOptimizerHook',
-    'DefaultRunnerConstructor'
+    'DefaultRunnerConstructor', 'Gan2ShapeRunner'
 ]

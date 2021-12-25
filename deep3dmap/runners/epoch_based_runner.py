@@ -9,6 +9,7 @@ from deep3dmap.core import utils
 import torch
 
 import deep3dmap.core as core
+from .optimizer import build_optimizer
 from .base_runner import BaseRunner
 from .builder import RUNNERS
 from .checkpoint import save_checkpoint
@@ -21,12 +22,20 @@ class EpochBasedRunner(BaseRunner):
 
     This runner train models epoch by epoch.
     """
+    def __init__(self,
+                 runner_cfgs,
+                 model,
+                 work_dir=None,
+                 logger=None,
+                 meta=None
+                 ):
+        super().__init__(model, None, work_dir, logger, meta, None, runner_cfgs.max_epochs)
+        self.datasets = [None]
+        self.data_loaders = [None]
+        self.optimizer = build_optimizer(model, runner_cfgs.optimizer)
 
     def run_iter(self, data_batch, train_mode, **kwargs):
-        if self.batch_processor is not None:
-            outputs = self.batch_processor(
-                self.model, data_batch, train_mode=train_mode, **kwargs)
-        elif train_mode:
+        if train_mode:
             outputs = self.model.train_step(data_batch, self.optimizer,
                                             **kwargs)
         else:
@@ -70,7 +79,7 @@ class EpochBasedRunner(BaseRunner):
 
         self.call_hook('after_val_epoch')
 
-    def run(self, data_loaders, workflow, max_epochs=None, **kwargs):
+    def run(self, use_data_loaders, workflow, max_epochs=None, **kwargs):
         """Start running.
 
         Args:
@@ -81,9 +90,9 @@ class EpochBasedRunner(BaseRunner):
                 running 2 epochs for training and 1 epoch for validation,
                 iteratively.
         """
-        assert isinstance(data_loaders, list)
+        assert isinstance(self.data_loaders, list)
         assert core.is_list_of(workflow, tuple)
-        assert len(data_loaders) == len(workflow)
+        assert len(self.data_loaders) == len(workflow)
         if max_epochs is not None:
             warnings.warn(
                 'setting max_epochs in run is deprecated, '
@@ -96,7 +105,7 @@ class EpochBasedRunner(BaseRunner):
         for i, flow in enumerate(workflow):
             mode, epochs = flow
             if mode == 'train':
-                self._max_iters = self._max_epochs * len(data_loaders[i])
+                self._max_iters = self._max_epochs * len(self.data_loaders[i])
                 break
 
         work_dir = self.work_dir if self.work_dir is not None else 'NONE'
@@ -125,7 +134,7 @@ class EpochBasedRunner(BaseRunner):
                 for _ in range(epochs):
                     if mode == 'train' and self.epoch >= self._max_epochs:
                         break
-                    epoch_runner(data_loaders[i], **kwargs)
+                    epoch_runner(self.data_loaders[i], **kwargs)
 
         time.sleep(1)  # wait for some hooks like loggers to finish
         self.call_hook('after_run')

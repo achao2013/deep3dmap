@@ -2,7 +2,7 @@
 import copy
 
 import cv2
-import mmcv
+import deep3dmap
 import numpy as np
 
 from ..builder import PIPELINES
@@ -130,7 +130,7 @@ class Shear:
             transformation.
         random_negative_prob (float): The probability that turns the
                 offset negative. Should be in range [0,1]
-        interpolation (str): Same as in :func:`mmcv.imshear`.
+        interpolation (str): Same as in :func:`deep3dmap.imshear`.
     """
 
     def __init__(self,
@@ -189,11 +189,11 @@ class Shear:
             magnitude (int | float): The magnitude used for shear.
             direction (str): The direction for shear, either "horizontal"
                 or "vertical".
-            interpolation (str): Same as in :func:`mmcv.imshear`.
+            interpolation (str): Same as in :func:`deep3dmap.imshear`.
         """
         for key in results.get('img_fields', ['img']):
             img = results[key]
-            img_sheared = mmcv.imshear(
+            img_sheared = deep3dmap.imshear(
                 img,
                 magnitude,
                 direction,
@@ -256,7 +256,7 @@ class Shear:
         """Shear the segmentation maps."""
         for key in results.get('seg_fields', []):
             seg = results[key]
-            results[key] = mmcv.imshear(
+            results[key] = deep3dmap.imshear(
                 seg,
                 magnitude,
                 direction,
@@ -334,10 +334,10 @@ class Rotate:
     Args:
         level (int | float): The level should be in range (0,_MAX_LEVEL].
         scale (int | float): Isotropic scale factor. Same in
-            ``mmcv.imrotate``.
+            ``deep3dmap.imrotate``.
         center (int | float | tuple[float]): Center point (w, h) of the
             rotation in the source image. If None, the center of the
-            image will be used. Same in ``mmcv.imrotate``.
+            image will be used. Same in ``deep3dmap.imrotate``.
         img_fill_val (int | float | tuple): The fill value for image border.
             If float, the same value will be used for all the three
             channels of image. If tuple, the should be 3 elements (e.g.
@@ -410,15 +410,15 @@ class Rotate:
         Args:
             results (dict): Result dict from loading pipeline.
             angle (float): Rotation angle in degrees, positive values
-                mean clockwise rotation. Same in ``mmcv.imrotate``.
+                mean clockwise rotation. Same in ``deep3dmap.imrotate``.
             center (tuple[float], optional): Center point (w, h) of the
-                rotation. Same in ``mmcv.imrotate``.
+                rotation. Same in ``deep3dmap.imrotate``.
             scale (int | float): Isotropic scale factor. Same in
-                ``mmcv.imrotate``.
+                ``deep3dmap.imrotate``.
         """
         for key in results.get('img_fields', ['img']):
             img = results[key].copy()
-            img_rotated = mmcv.imrotate(
+            img_rotated = deep3dmap.imrotate(
                 img, angle, center, scale, border_value=self.img_fill_val)
             results[key] = img_rotated.astype(img.dtype)
 
@@ -478,7 +478,7 @@ class Rotate:
         """Rotate the segmentation map."""
         for key in results.get('seg_fields', []):
             seg = results[key].copy()
-            results[key] = mmcv.imrotate(
+            results[key] = deep3dmap.imrotate(
                 seg, angle, center, scale,
                 border_value=fill_val).astype(seg.dtype)
 
@@ -619,7 +619,7 @@ class Translate:
         """
         for key in results.get('img_fields', ['img']):
             img = results[key].copy()
-            results[key] = mmcv.imtranslate(
+            results[key] = deep3dmap.imtranslate(
                 img, offset, direction, self.img_fill_val).astype(img.dtype)
 
     def _translate_bboxes(self, results, offset):
@@ -659,7 +659,7 @@ class Translate:
         """Translate segmentation maps horizontally or vertically."""
         for key in results.get('seg_fields', []):
             seg = results[key].copy()
-            results[key] = mmcv.imtranslate(seg, offset, direction,
+            results[key] = deep3dmap.imtranslate(seg, offset, direction,
                                             fill_val).astype(seg.dtype)
 
     def _filter_invalid(self, results, min_size=0):
@@ -732,7 +732,7 @@ class ColorTransform:
         for key in results.get('img_fields', ['img']):
             # NOTE defaultly the image should be BGR format
             img = results[key]
-            results[key] = mmcv.adjust_color(img, factor).astype(img.dtype)
+            results[key] = deep3dmap.adjust_color(img, factor).astype(img.dtype)
 
     def __call__(self, results):
         """Call function for Color transformation.
@@ -773,7 +773,7 @@ class EqualizeTransform:
         """Equalizes the histogram of one image."""
         for key in results.get('img_fields', ['img']):
             img = results[key]
-            results[key] = mmcv.imequalize(img).astype(img.dtype)
+            results[key] = deep3dmap.imequalize(img).astype(img.dtype)
 
     def __call__(self, results):
         """Call function for Equalize transformation.
@@ -819,7 +819,7 @@ class BrightnessTransform:
         """Adjust the brightness of image."""
         for key in results.get('img_fields', ['img']):
             img = results[key]
-            results[key] = mmcv.adjust_brightness(img,
+            results[key] = deep3dmap.adjust_brightness(img,
                                                   factor).astype(img.dtype)
 
     def __call__(self, results):
@@ -868,7 +868,7 @@ class ContrastTransform:
         """Adjust the image contrast."""
         for key in results.get('img_fields', ['img']):
             img = results[key]
-            results[key] = mmcv.adjust_contrast(img, factor).astype(img.dtype)
+            results[key] = deep3dmap.adjust_contrast(img, factor).astype(img.dtype)
 
     def __call__(self, results):
         """Call function for Contrast transformation.

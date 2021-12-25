@@ -5,12 +5,12 @@ import math
 import warnings
 
 import cv2
-import mmcv
+import deep3dmap
 import numpy as np
 from numpy import random
 
-from mmdet.core import PolygonMasks
-from mmdet.core.evaluation.bbox_overlaps import bbox_overlaps
+from deep3dmap.core.utils.mask_structures import PolygonMasks
+from deep3dmap.core.evaluation.bbox_overlaps import bbox_overlaps
 from ..builder import PIPELINES
 
 try:
@@ -82,7 +82,7 @@ class Resize:
                 self.img_scale = img_scale
             else:
                 self.img_scale = [img_scale]
-            assert mmcv.is_list_of(self.img_scale, tuple)
+            assert deep3dmap.core.utils.is_list_of(self.img_scale, tuple)
 
         if ratio_range is not None:
             # mode 1: given a scale and a range of image ratio
@@ -112,7 +112,7 @@ class Resize:
                 ``scale_idx`` is the selected index in the given candidates.
         """
 
-        assert mmcv.is_list_of(img_scales, tuple)
+        assert deep3dmap.core.utils.is_list_of(img_scales, tuple)
         scale_idx = np.random.randint(len(img_scales))
         img_scale = img_scales[scale_idx]
         return img_scale, scale_idx
@@ -132,7 +132,7 @@ class Resize:
                 to be consistent with :func:`random_select`.
         """
 
-        assert mmcv.is_list_of(img_scales, tuple) and len(img_scales) == 2
+        assert deep3dmap.core.utils.is_list_of(img_scales, tuple) and len(img_scales) == 2
         img_scale_long = [max(s) for s in img_scales]
         img_scale_short = [min(s) for s in img_scales]
         long_edge = np.random.randint(
@@ -208,19 +208,19 @@ class Resize:
         """Resize images with ``results['scale']``."""
         for key in results.get('img_fields', ['img']):
             if self.keep_ratio:
-                img, scale_factor = mmcv.imrescale(
+                img, scale_factor = deep3dmap.core.utils.imrescale(
                     results[key],
                     results['scale'],
                     return_scale=True,
                     backend=self.backend)
                 # the w_scale and h_scale has minor difference
-                # a real fix should be done in the mmcv.imrescale in the future
+                # a real fix should be done in the deep3dmap.core.utils.imrescale in the future
                 new_h, new_w = img.shape[:2]
                 h, w = results[key].shape[:2]
                 w_scale = new_w / w
                 h_scale = new_h / h
             else:
-                img, w_scale, h_scale = mmcv.imresize(
+                img, w_scale, h_scale = deep3dmap.core.utils.imresize(
                     results[key],
                     results['scale'],
                     return_scale=True,
@@ -259,13 +259,13 @@ class Resize:
         """Resize semantic segmentation map with ``results['scale']``."""
         for key in results.get('seg_fields', []):
             if self.keep_ratio:
-                gt_seg = mmcv.imrescale(
+                gt_seg = deep3dmap.core.utils.imrescale(
                     results[key],
                     results['scale'],
                     interpolation='nearest',
                     backend=self.backend)
             else:
-                gt_seg = mmcv.imresize(
+                gt_seg = deep3dmap.core.utils.imresize(
                     results[key],
                     results['scale'],
                     interpolation='nearest',
@@ -359,7 +359,7 @@ class RandomFlip:
 
     def __init__(self, flip_ratio=None, direction='horizontal'):
         if isinstance(flip_ratio, list):
-            assert mmcv.is_list_of(flip_ratio, float)
+            assert deep3dmap.core.utils.is_list_of(flip_ratio, float)
             assert 0 <= sum(flip_ratio) <= 1
         elif isinstance(flip_ratio, float):
             assert 0 <= flip_ratio <= 1
@@ -374,7 +374,7 @@ class RandomFlip:
         if isinstance(direction, str):
             assert direction in valid_directions
         elif isinstance(direction, list):
-            assert mmcv.is_list_of(direction, str)
+            assert deep3dmap.core.utils.is_list_of(direction, str)
             assert set(direction).issubset(set(valid_directions))
         else:
             raise ValueError('direction must be either str or list of str')
@@ -455,7 +455,7 @@ class RandomFlip:
         if results['flip']:
             # flip image
             for key in results.get('img_fields', ['img']):
-                results[key] = mmcv.imflip(
+                results[key] = deep3dmap.core.utils.imflip(
                     results[key], direction=results['flip_direction'])
             # flip bboxes
             for key in results.get('bbox_fields', []):
@@ -468,7 +468,7 @@ class RandomFlip:
 
             # flip segs
             for key in results.get('seg_fields', []):
-                results[key] = mmcv.imflip(
+                results[key] = deep3dmap.core.utils.imflip(
                     results[key], direction=results['flip_direction'])
         return results
 
@@ -617,10 +617,10 @@ class Pad:
                 max_size = max(results[key].shape[:2])
                 self.size = (max_size, max_size)
             if self.size is not None:
-                padded_img = mmcv.impad(
+                padded_img = deep3dmap.core.utils.impad(
                     results[key], shape=self.size, pad_val=pad_val)
             elif self.size_divisor is not None:
-                padded_img = mmcv.impad_to_multiple(
+                padded_img = deep3dmap.core.utils.impad_to_multiple(
                     results[key], self.size_divisor, pad_val=pad_val)
             results[key] = padded_img
         results['pad_shape'] = padded_img.shape
@@ -639,7 +639,7 @@ class Pad:
         ``results['pad_shape']``."""
         pad_val = self.pad_val.get('seg', 255)
         for key in results.get('seg_fields', []):
-            results[key] = mmcv.impad(
+            results[key] = deep3dmap.core.utils.impad(
                 results[key], shape=results['pad_shape'][:2], pad_val=pad_val)
 
     def __call__(self, results):
@@ -694,7 +694,7 @@ class Normalize:
                 result dict.
         """
         for key in results.get('img_fields', ['img']):
-            results[key] = mmcv.imnormalize(results[key], self.mean, self.std,
+            results[key] = deep3dmap.core.utils.imnormalize(results[key], self.mean, self.std,
                                             self.to_rgb)
         results['img_norm_cfg'] = dict(
             mean=self.mean, std=self.std, to_rgb=self.to_rgb)
@@ -923,7 +923,7 @@ class SegRescale:
 
         for key in results.get('seg_fields', []):
             if self.scale_factor != 1:
-                results[key] = mmcv.imrescale(
+                results[key] = deep3dmap.core.utils.imrescale(
                     results[key],
                     self.scale_factor,
                     interpolation='nearest',
@@ -1000,7 +1000,7 @@ class PhotoMetricDistortion:
                 img *= alpha
 
         # convert color from BGR to HSV
-        img = mmcv.bgr2hsv(img)
+        img = deep3dmap.core.utils.bgr2hsv(img)
 
         # random saturation
         if random.randint(2):
@@ -1014,7 +1014,7 @@ class PhotoMetricDistortion:
             img[..., 0][img[..., 0] < 0] += 360
 
         # convert color from HSV to BGR
-        img = mmcv.hsv2bgr(img)
+        img = deep3dmap.core.utils.hsv2bgr(img)
 
         # random contrast
         if mode == 0:
@@ -1419,7 +1419,7 @@ class Albu:
         args = cfg.copy()
 
         obj_type = args.pop('type')
-        if mmcv.is_str(obj_type):
+        if deep3dmap.core.utils.is_str(obj_type):
             if albumentations is None:
                 raise RuntimeError('albumentations is not installed')
             obj_cls = getattr(albumentations, obj_type)
@@ -2068,7 +2068,7 @@ class Mosaic:
             # keep_ratio resize
             scale_ratio_i = min(self.img_scale[0] / h_i,
                                 self.img_scale[1] / w_i)
-            img_i = mmcv.imresize(
+            img_i = deep3dmap.core.utils.imresize(
                 img_i, (int(w_i * scale_ratio_i), int(h_i * scale_ratio_i)))
 
             # compute the combine parameters
@@ -2329,7 +2329,7 @@ class MixUp:
         # 1. keep_ratio resize
         scale_ratio = min(self.dynamic_scale[0] / retrieve_img.shape[0],
                           self.dynamic_scale[1] / retrieve_img.shape[1])
-        retrieve_img = mmcv.imresize(
+        retrieve_img = deep3dmap.core.utils.imresize(
             retrieve_img, (int(retrieve_img.shape[1] * scale_ratio),
                            int(retrieve_img.shape[0] * scale_ratio)))
 
@@ -2338,7 +2338,7 @@ class MixUp:
 
         # 3. scale jit
         scale_ratio *= jit_factor
-        out_img = mmcv.imresize(out_img, (int(out_img.shape[1] * jit_factor),
+        out_img = deep3dmap.core.utils.imresize(out_img, (int(out_img.shape[1] * jit_factor),
                                           int(out_img.shape[0] * jit_factor)))
 
         # 4. flip

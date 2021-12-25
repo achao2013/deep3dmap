@@ -2,13 +2,12 @@
 import copy
 import warnings
 
-from mmcv.cnn import VGG
-from mmcv.runner.hooks import HOOKS, Hook
 
-from mmdet.datasets.builder import PIPELINES
-from mmdet.datasets.pipelines import LoadAnnotations, LoadImageFromFile
-from mmdet.models.dense_heads import GARPNHead, RPNHead
-from mmdet.models.roi_heads.mask_heads import FusedSemanticHead
+from deep3dmap.runners.hooks import HOOKS, Hook
+
+from deep3dmap.datasets.builder import PIPELINES
+from deep3dmap.datasets.pipelines import LoadAnnotations, LoadImageFromFile
+
 
 
 def replace_ImageToTensor(pipelines):
@@ -137,8 +136,7 @@ class NumClassCheckHook(Hook):
                  f'Add comma if number of classes is 1 as '
                  f'CLASSES = ({dataset.CLASSES},)')
             for name, module in model.named_modules():
-                if hasattr(module, 'num_classes') and not isinstance(
-                        module, (RPNHead, VGG, FusedSemanticHead, GARPNHead)):
+                if hasattr(module, 'num_classes'):
                     assert module.num_classes == len(dataset.CLASSES), \
                         (f'The `num_classes` ({module.num_classes}) in '
                          f'{module.__class__.__name__} of '

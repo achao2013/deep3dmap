@@ -240,6 +240,8 @@ class Registry:
         self.children[registry.scope] = registry
 
     def _register_module(self, module_class, module_name=None, force=False):
+        #if module_class.__name__=='CelebaDataset':
+        #    print('register ', module_class.__name__, module_class)
         if not inspect.isclass(module_class):
             raise TypeError('module must be a class, '
                             f'but got {type(module_class)}')

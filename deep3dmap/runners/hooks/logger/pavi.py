@@ -6,7 +6,7 @@ import os.path as osp
 import torch
 import yaml
 
-import mmcv
+import deep3dmap
 from ....parallel.utils import is_module_wrapper
 from ...dist_utils import master_only
 from ..hook import HOOKS
@@ -55,7 +55,7 @@ class PaviLoggerHook(LoggerHook):
                             f'but got {type(config_dict)}')
             elif 'config_file' in runner.meta:
                 config_file = runner.meta['config_file']
-                config_dict = dict(mmcv.Config.fromfile(config_file))
+                config_dict = dict(deep3dmap.Config.fromfile(config_file))
             else:
                 config_dict = None
             if config_dict is not None:
@@ -64,9 +64,9 @@ class PaviLoggerHook(LoggerHook):
                 config_dict = config_dict.copy()
                 config_dict.setdefault('max_iter', runner.max_iters)
                 # non-serializable values are first converted in
-                # mmcv.dump to json
+                # deep3dmap.dump to json
                 config_dict = json.loads(
-                    mmcv.dump(config_dict, file_format='json'))
+                    deep3dmap.dump(config_dict, file_format='json'))
                 session_text = yaml.dump(config_dict)
                 self.init_kwargs['session_text'] = session_text
         self.writer = SummaryWriter(**self.init_kwargs)

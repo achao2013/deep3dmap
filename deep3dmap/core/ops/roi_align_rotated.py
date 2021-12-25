@@ -4,8 +4,8 @@ from torch.autograd import Function
 
 from ..utils import ext_loader
 
-ext_module = ext_loader.load_ext(
-    '_ext', ['roi_align_rotated_forward', 'roi_align_rotated_backward'])
+#ext_module = ext_loader.load_ext(
+#    '_ext', ['roi_align_rotated_forward', 'roi_align_rotated_backward'])
 
 
 class RoIAlignRotatedFunction(Function):

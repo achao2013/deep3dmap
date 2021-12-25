@@ -1,6 +1,6 @@
 import torch
 
-import mmcv
+import deep3dmap
 
 
 class _BatchNormXd(torch.nn.modules.batchnorm._BatchNorm):
@@ -20,7 +20,7 @@ class _BatchNormXd(torch.nn.modules.batchnorm._BatchNorm):
 
 def revert_sync_batchnorm(module):
     """Helper function to convert all `SyncBatchNorm` (SyncBN) and
-    `mmcv.ops.sync_bn.SyncBatchNorm`(MMSyncBN) layers in the model to
+    `deep3dmap.ops.sync_bn.SyncBatchNorm`(MMSyncBN) layers in the model to
     `BatchNormXd` layers.
 
     Adapted from @kapily's work:
@@ -34,8 +34,8 @@ def revert_sync_batchnorm(module):
     """
     module_output = module
     module_checklist = [torch.nn.modules.batchnorm.SyncBatchNorm]
-    if hasattr(mmcv, 'ops'):
-        module_checklist.append(mmcv.ops.SyncBatchNorm)
+    if hasattr(deep3dmap, 'ops'):
+        module_checklist.append(deep3dmap.ops.SyncBatchNorm)
     if isinstance(module, tuple(module_checklist)):
         module_output = _BatchNormXd(module.num_features, module.eps,
                                      module.momentum, module.affine,

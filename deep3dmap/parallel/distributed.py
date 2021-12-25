@@ -3,7 +3,7 @@ import torch
 from torch.nn.parallel.distributed import (DistributedDataParallel,
                                            _find_tensors)
 
-from ..core import print_log
+from ..core.utils import print_log
 from ..core.utils import TORCH_VERSION, digit_version
 from .scatter_gather import scatter_kwargs
 

@@ -14,16 +14,19 @@ from torchvision import transforms
 from .. import networks
 from deep3dmap.core.utils import utils
 from pnpmodules.stylegan2 import Generator, Discriminator, PerceptualLoss
-from deep3dmap.core.renderer import Renderer
+from deep3dmap.core.renderer.renderer import Renderer
 from deep3dmap.models.losses import DiscriminatorLoss
 from deep3dmap.parallel import MMDataParallel, MMDistributedDataParallel
+from ..builder import MODELS
+from deep3dmap.runners.base_module import BaseModule
 
 def map_func(storage, location):
     return storage.cpu()
 
-
+@MODELS.register_module()
 class Gan2Shape():
-    def __init__(self, model_cfgs):
+    def __init__(self, model_cfgs, train_cfg=None, test_cfg=None):
+        super(Gan2Shape, self).__init__()
         # basic parameters
         self.model_name = model_cfgs.get('model_name', self.__class__.__name__)
         self.checkpoint_dir = model_cfgs.get('checkpoint_dir', 'results')
@@ -41,6 +44,8 @@ class Gan2Shape():
         self.use_mask = model_cfgs.get('use_mask', True)
         self.add_mean_L = model_cfgs.get('add_mean_L', False)
         self.add_mean_V = model_cfgs.get('add_mean_V', False)
+        self.flip1_cfg = model_cfgs.get('flip1_cfg', [False, False, False])
+        self.flip3_cfg = model_cfgs.get('flip3_cfg', [False, False, False])
         self.flip1 = model_cfgs.get('flip1_cfg', [False])[0]
         self.flip3 = model_cfgs.get('flip3_cfg', [False])[0]
         self.reset_weight = model_cfgs.get('reset_weight', False)
@@ -69,7 +74,7 @@ class Gan2Shape():
         self.z_dim = model_cfgs.get('z_dim', 512)
         self.truncation = model_cfgs.get('truncation', 1)
         self.F1_d = model_cfgs.get('F1_d', 2)
-        # networks and optimizers
+        # networks and nets
         self.generator = Generator(self.gan_size, self.z_dim, 8, channel_multiplier=self.channel_multiplier)
         self.discriminator = Discriminator(self.gan_size, channel_multiplier=self.channel_multiplier)
 
@@ -94,6 +99,7 @@ class Gan2Shape():
         self.depth_inv_rescaler = lambda d: (d-self.min_depth) / (self.max_depth-self.min_depth)  # (min_depth,max_depth) => (0,1)
 
         # light and viewpoint sampler
+        self.parsing_model_path=model_cfgs.get('parsing_model_path')
         self.init_VL_sampler()
 
         # load pre-trained weights
@@ -118,12 +124,14 @@ class Gan2Shape():
             network = getattr(self, k)
             network = network.cuda()
         
+        self.find_unused_parameters=model_cfgs.get('find_unused_parameters', False)
         # put model on gpus
         if self.distributed and self.share_weight:
             for net_name in self.network_names:
                 if self.distributed: # distributed
                     find_unused_parameters = model_cfgs.get('find_unused_parameters', False)
-                    setattr(self, net_name, MMDistributedDataParallel(getattr(self, net_name),
+                    #setattr(self, net_name, MMDistributedDataParallel(getattr(self, net_name),
+                    setattr(self, net_name, DDP(getattr(self, net_name),
                                             device_ids=[torch.cuda.current_device()],
                                             broadcast_buffers=False,
                                             find_unused_parameters=find_unused_parameters))
@@ -144,8 +152,33 @@ class Gan2Shape():
         self.proj_idx = 0  # index used for loading projected samples
         self.canon_mask = None
 
+    def train(self):
+        net_names = []
+        if self.mode == 'step1':
+            net_names = ['netA']
+        elif self.mode == 'step2':
+            net_names = ['netEnc']
+        elif self.mode == 'step3':
+            net_names = [name for name in self.network_names]
+            net_names.remove('netEnc')
+
+        for net_name in net_names:
+            net = getattr(self, net_name)
+            net.train()
+
+    def init_weights(self):
+        self.netA.init_weights()
+        self.netD.init_weights()
+        self.netL.init_weights()
+        self.netD.init_weights()
+        self.netEnc.init_weights()
+
     def reset_model_weight(self):
         self.load_model_state(self.ckpt)
+
+    def setup_state(self, current_stage):
+        self.flip1 = self.flip1_cfg[current_stage]
+        self.flip3 = self.flip3_cfg[current_stage]
 
     def setup_target(self, img_num, input_im, input_im_all, w_path, latent_w, latent_w_all):
         self.latent_style_forward(w_path, latent_w, latent_w_all)
@@ -168,20 +201,20 @@ class Gan2Shape():
             else:
                 self.input_mask = self.parse_mask(input_im)
 
-    def next_image(self):
+    def next_image(self, dataset):
         # Used in joint training mode
         self.img_idx += 1
-        if self.img_idx >= self.img_num:
+        if self.img_idx >= dataset.img_num:
             self.img_idx = 0
-            rand_idx = torch.randperm(self.img_num)  # shuffle
+            rand_idx = torch.randperm(dataset.img_num)  # shuffle
             self.idx_perm = self.idx_perm[rand_idx]
         idx = self.idx_perm[self.img_idx].item()
-        self.input_im = self.input_im_all[idx].cuda()
+        self.input_im = dataset.input_im_all[idx].cuda()
         self.input_mask = self.input_mask_all[idx].cuda()
-        self.latent_w = self.latent_w_all[idx].cuda()
+        self.latent_w = dataset.latent_w_all[idx].cuda()
         self.gan_im = self.gan_im_all[idx].cuda()
         if self.load_gt_depth:
-            self.depth_gt = self.depth_gt_all[idx].cuda()
+            self.depth_gt = dataset.depth_gt_all[idx].cuda()
         if self.mode == 'step2':
             self.depth = self.depth_all[idx].cuda()
             self.albedo = self.albedo_all[idx].cuda()
@@ -192,7 +225,7 @@ class Gan2Shape():
 
     def init_netD_ellipsoid(self):
         ellipsoid = self.init_ellipsoid()
-        optimizer = torch.optim.Adam(
+        net = torch.optim.Adam(
             filter(lambda p: p.requires_grad, self.netD.parameters()),
             lr=0.0001, betas=(0.9, 0.999), weight_decay=5e-4)
 
@@ -203,9 +236,9 @@ class Gan2Shape():
             depth = depth.tanh()
             depth = self.depth_rescaler(depth)
             loss = F.mse_loss(depth[0], ellipsoid)
-            optimizer.zero_grad()
+            net.zero_grad()
             loss.backward()
-            optimizer.step()
+            net.step()
             if i % 100 == 0 and self.rank == 0:
                 print(f"Iter: {i}, Loss: {loss.item():.6f}")
 
@@ -272,15 +305,15 @@ class Gan2Shape():
         if self.category in ['face', 'synface']:
             from deep3dmap.models.parsing import BiSeNet
             self.parse_model = BiSeNet(n_classes=19)
-            self.parse_model.load_state_dict(torch.load('checkpoints/parsing/bisenet.pth', map_location=map_func))
+            self.parse_model.load_state_dict(torch.load(self.parsing_model_path, map_location=map_func))
         else:
             from deep3dmap.models.parsing import PSPNet
             if self.category == 'church':
                 classes = 150
-                ckpt_path = 'checkpoints/parsing/pspnet_ade20k.pth'
+                ckpt_path = self.parsing_model_path
             else:
                 classes = 21
-                ckpt_path = 'checkpoints/parsing/pspnet_voc.pth'
+                ckpt_path = self.parsing_model_path
             self.parse_model = PSPNet(classes=classes, pretrained=False)
             temp = nn.DataParallel(self.parse_model)
             checkpoint = torch.load(ckpt_path, map_location=map_func)
@@ -288,6 +321,7 @@ class Gan2Shape():
             self.parse_model = temp.module
 
         self.parse_model = self.parse_model.cuda()
+        #self.parse_model=MMDistributedDataParallel(self.parse_model,device_ids=[torch.cuda.current_device()], find_unused_parameters=self.find_unused_parameters)
         self.parse_model.eval()
 
     def parse_mask(self, image):
@@ -372,11 +406,11 @@ class Gan2Shape():
 
 
 
-    def forward_step1(self):
+    def forward_step1(self,dataset):
         b = 1
         h, w = self.image_size, self.image_size
         ## predict depth
-        self.depth_raw = self.netD(self.input_im).squeeze(1)  # 1xHxW
+        self.depth_raw = self.netD(dataset.input_im).squeeze(1)  # 1xHxW
         self.depth = self.depth_raw - self.depth_raw.view(1,-1).mean(1).view(1,1,1)
         self.depth = self.depth.tanh()
         self.depth = self.depth_rescaler(self.depth)
@@ -389,7 +423,7 @@ class Gan2Shape():
             self.depth = torch.cat([self.depth, self.depth.flip(2)], 0)
 
         ## predict viewpoint transformation
-        self.view = self.netV(self.input_im)
+        self.view = self.netV(dataset.input_im)
         if self.add_mean_V:
             self.view = self.view + self.view_mean.unsqueeze(0)
         if self.flip3 and self.mode == 'step3':
@@ -401,12 +435,12 @@ class Gan2Shape():
         self.renderer.set_transform_matrices(self.view_trans)
 
         ## predict albedo
-        self.albedo = self.netA(self.input_im)  # 1x3xHxW
+        self.albedo = self.netA(dataset.input_im)  # 1x3xHxW
         if (self.flip3 and self.mode == 'step3') or self.flip1:
             self.albedo = torch.cat([self.albedo, self.albedo.flip(3)], 0)  # flip
 
         ## predict lighting
-        self.light = self.netL(self.input_im)  # Bx4
+        self.light = self.netL(dataset.input_im)  # Bx4
         if self.add_mean_L:
             self.light = self.light + self.light_mean.unsqueeze(0)
         if (self.flip3 and self.mode == 'step3') or self.flip1:
@@ -439,12 +473,12 @@ class Gan2Shape():
         self.recon_im = nn.functional.grid_sample(self.texture, self.grid_2d_from_canon, mode='bilinear').clamp(min=-1, max=1)
 
         ## loss function
-        self.loss_l1_im = utils.photometric_loss(self.recon_im[:b], self.input_im, mask=recon_im_mask[:b])
-        self.loss_perc_im = self.PerceptualLoss(self.recon_im[:b] * recon_im_mask[:b], self.input_im * recon_im_mask[:b])
+        self.loss_l1_im = utils.photometric_loss(self.recon_im[:b], dataset.input_im, mask=recon_im_mask[:b])
+        self.loss_perc_im = self.PerceptualLoss(self.recon_im[:b] * recon_im_mask[:b], dataset.input_im * recon_im_mask[:b])
         self.loss_perc_im = torch.mean(self.loss_perc_im)
         if (self.flip3 and self.mode == 'step3') or self.flip1:
-            self.loss_l1_im_flip = utils.photometric_loss(self.recon_im[b:], self.input_im, mask=recon_im_mask[b:])
-            self.loss_perc_im_flip = self.PerceptualLoss(self.recon_im[b:]*recon_im_mask[b:], self.input_im*recon_im_mask[b:])
+            self.loss_l1_im_flip = utils.photometric_loss(self.recon_im[b:], dataset.input_im, mask=recon_im_mask[b:])
+            self.loss_perc_im_flip = self.PerceptualLoss(self.recon_im[b:]*recon_im_mask[b:], dataset.input_im*recon_im_mask[b:])
             self.loss_perc_im_flip = torch.mean(self.loss_perc_im_flip)
 
         self.loss_smooth = utils.smooth_loss(self.depth) + \
@@ -475,7 +509,7 @@ class Gan2Shape():
 
         return metrics
 
-    def step1_collect(self):
+    def step1_collect(self,dataset):
         # collect results in step1, used for step2 in joint training mode
         self.depth_all, self.albedo_all = [], []
         self.light_all, self.normal_all = [], []
@@ -485,7 +519,7 @@ class Gan2Shape():
         if self.rank == 0:
             print("Collecting step 1 results ...")
         for i in range(self.img_num):
-            self.next_image()
+            self.next_image(dataset)
             with torch.no_grad():
                 self.forward_step1()
             self.depth_all.append(self.depth.cpu())
@@ -495,18 +529,18 @@ class Gan2Shape():
             if self.use_mask:
                 self.canon_mask_all.append(self.canon_mask.cpu())
 
-    def latent_project(self, image):
+    def latent_project(self, image, dataset):
         offset = self.netEnc(image)
         if self.relative_enc:
             offset = offset - self.netEnc(self.gan_im)
         hidden = offset + self.center_h
         offset = self.generator.style_forward(hidden, skip=8-self.F1_d) - self.center_w
-        latent = self.latent_w + offset
+        latent = dataset.latent_w + offset
         return offset, latent
 
-    def gan_invert(self, image, batchify=0):
-        def gan_invert_sub(image):
-            offset, latent = self.latent_project(image)
+    def gan_invert(self, image, dataset, batchify=0):
+        def gan_invert_sub(image,dataset):
+            offset, latent = self.latent_project(image, dataset)
             gan_im, _ = self.generator([latent], input_is_w=True, truncation_latent=self.mean_latent,
                                        truncation=self.truncation, randomize_noise=False)
             return gan_im.clamp(min=-1, max=1), offset
@@ -514,20 +548,20 @@ class Gan2Shape():
         if batchify > 0:
             gan_ims, offsets = [], []
             for i in range(0, image.size(0), batchify):
-                gan_im, offset = gan_invert_sub(image[i:i+batchify])
+                gan_im, offset = gan_invert_sub(image[i:i+batchify], dataset)
                 gan_ims.append(gan_im)
                 offsets.append(offset)
             gan_ims = torch.cat(gan_ims, dim=0)
             offsets = torch.cat(offsets, dim=0)
         else:
-            gan_ims, offsets = gan_invert_sub(image)
+            gan_ims, offsets = gan_invert_sub(image, dataset)
         return gan_ims, offsets
 
-    def forward_step2(self):
+    def forward_step2(self,dataset):
         with torch.no_grad():
             self.pseudo_im, self.mask = self.sample_pseudo_imgs(self.batchsize)
 
-        self.proj_im, offset = self.gan_invert(self.pseudo_im)
+        self.proj_im, offset = self.gan_invert(self.pseudo_im, dataset)
         if self.crop is not None:
             self.proj_im = utils.resize(self.proj_im, [self.origin_size, self.origin_size])
             self.proj_im = utils.crop(self.proj_im, self.crop)
@@ -541,7 +575,7 @@ class Gan2Shape():
         metrics = {'loss': self.loss_total}
         return metrics
 
-    def step2_collect(self):
+    def step2_collect(self,dataset):
         # collect projected samples, used for step3
         if self.joint_train:
             self.proj_im_all = [[] for i in range(self.img_num)]
@@ -554,12 +588,12 @@ class Gan2Shape():
             if self.rank == 0 and i % 100 == 0:
                 print(f"Collecting {i}/{self.collect_iters} samples ...")
             with torch.no_grad():
-                self.forward_step2()
+                self.forward_step2(dataset)
             if self.joint_train:
                 idx = self.idx_perm[self.img_idx].item()
                 self.proj_im_all[idx].append(self.proj_im.cpu())
                 self.mask_all[idx].append(self.mask.cpu())
-                self.next_image()
+                self.next_image(dataset)
             else:
                 self.proj_imgs.append(self.proj_im.cpu())
                 self.masks.append(self.mask.cpu())
@@ -572,9 +606,9 @@ class Gan2Shape():
             self.proj_imgs = torch.cat(self.proj_imgs, 0)
             self.masks = torch.cat(self.masks, 0)
 
-    def forward_step3(self):
+    def forward_step3(self,dataset):
         # also reconstruct the input image using forward_step1
-        metrics = self.forward_step1()
+        metrics = self.forward_step1(dataset)
         # load collected projected samples
         self.load_proj_images(self.batchsize)
         b, h, w = self.proj_im.size(0), self.image_size, self.image_size
@@ -648,13 +682,13 @@ class Gan2Shape():
 
         return metrics
 
-    def forward(self):
+    def forward(self,dataset):
         if self.mode == 'step1':
-            m = self.forward_step1()
+            m = self.forward_step1(dataset)
         elif self.mode == 'step2':
-            m = self.forward_step2()
+            m = self.forward_step2(dataset)
         elif self.mode == 'step3':
-            m = self.forward_step3()
+            m = self.forward_step3(dataset)
         return m
 
     def sample_pseudo_imgs(self, batchsize):
@@ -711,8 +745,8 @@ class Gan2Shape():
             self.proj_im = self.proj_imgs[self.proj_idx:self.proj_idx+b].cuda()
             self.mask = self.masks[self.proj_idx:self.proj_idx+b].cuda()
 
-    def save_results(self, stage=0):
-        path = self.image_path
+    def save_results(self, dataset, stage=0):
+        path = dataset.image_path
         idx1 = path.rfind('/')
         idx2 = path.rfind('.')
         img_name = path[idx1+1:idx2]
@@ -743,7 +777,7 @@ class Gan2Shape():
             im_rotate = self.renderer.render_view(texture, depth, maxr=maxr, nsample=[num_p,num_y])[0]
             save_img(im_rotate/2+0.5, root, 'im_rotate', last_only=True)
             im_rotate = self.renderer.render_view(texture, depth, maxr=maxr, nsample=[num_p,num_y], grid_sample=True)[0]
-            gan_rotate, _ = self.gan_invert(im_rotate, batchify=10)
+            gan_rotate, _ = self.gan_invert(im_rotate, dataset, batchify=10)
             save_img(gan_rotate/2+0.5, root, 'gan_rotate', crop=True, last_only=True)
             # sample relighting
             dxs = [-1.5, -0.7, 0, 0.7, 1.5]
@@ -768,7 +802,7 @@ class Gan2Shape():
                         im_relightgs.append(im_relight.cpu())
                         im_relight = self.renderer.render_given_view(rand_texture, self.depth[0,None],
                                                                      view=view, grid_sample=True)
-                        gan_relight, _ = self.gan_invert(im_relight, batchify=10)
+                        gan_relight, _ = self.gan_invert(im_relight, dataset, batchify=10)
                         gan_relights.append(gan_relight.cpu())
             im_relightgs = torch.cat(im_relightgs, dim=0)
             save_img(im_relightgs/2+0.5, root, 'im_relight', last_only=True)

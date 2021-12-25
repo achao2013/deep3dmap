@@ -2,6 +2,8 @@
 from .builder import DATASETS, PIPELINES, build_dataloader, build_dataset
 
 from .custom import CustomDataset
+from .celeba import CelebaDataset
+from .scannet import ScanNetDataset
 from .dataset_wrappers import (ClassBalancedDataset, ConcatDataset,
                                MultiImageMixDataset, RepeatDataset)
 from .samplers import DistributedGroupSampler, DistributedSampler, GroupSampler
@@ -16,5 +18,5 @@ __all__ = [
     'DistributedSampler', 'build_dataloader', 'ConcatDataset', 'RepeatDataset',
     'ClassBalancedDataset', 'DATASETS', 'PIPELINES',
     'build_dataset', 'replace_ImageToTensor', 'get_loading_pipeline',
-    'NumClassCheckHook', 'MultiImageMixDataset'
+    'NumClassCheckHook', 'MultiImageMixDataset', 'CelebaDataset', 'ScanNetDataset'
 ]

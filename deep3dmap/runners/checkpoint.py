@@ -15,13 +15,13 @@ import torchvision
 from torch.optim import Optimizer
 from torch.utils import model_zoo
 
-import mmcv
+import deep3dmap
 from ..core.utils.fileio import FileClient
 from ..core.utils.fileio import load as load_file
 from ..parallel import is_module_wrapper
 from .dist_utils import get_dist_info
 
-ENV_MMCV_HOME = 'DEEPRECON_HOME'
+ENV_deep3dmap_HOME = 'DEEPRECON_HOME'
 ENV_XDG_CACHE_HOME = 'XDG_CACHE_HOME'
 DEFAULT_CACHE_DIR = '~/.cache'
 
@@ -29,9 +29,9 @@ DEFAULT_CACHE_DIR = '~/.cache'
 def _get_deeprecon_home():
     deeprecon_home = os.path.expanduser(
         os.getenv(
-            ENV_MMCV_HOME,
+            ENV_deep3dmap_HOME,
             os.path.join(
-                os.getenv(ENV_XDG_CACHE_HOME, DEFAULT_CACHE_DIR), 'mmcv')))
+                os.getenv(ENV_XDG_CACHE_HOME, DEFAULT_CACHE_DIR), 'deep3dmap')))
 
     if not osp.exists(deeprecon_home):
         os.makedirs(deeprecon_home)
@@ -120,7 +120,7 @@ def get_torchvision_models():
 
 def get_external_models():
     deeprecon_home = _get_deeprecon_home()
-    default_json_path = osp.join(mmcv.__path__[0], 'model_zoo/open_mmlab.json')
+    default_json_path = osp.join(deep3dmap.__path__[0], 'model_zoo/open_mmlab.json')
     default_urls = load_file(default_json_path)
     assert isinstance(default_urls, dict)
     external_json_path = osp.join(deeprecon_home, 'open_mmlab.json')
@@ -133,14 +133,14 @@ def get_external_models():
 
 
 def get_mmcls_models():
-    mmcls_json_path = osp.join(mmcv.__path__[0], 'model_zoo/mmcls.json')
+    mmcls_json_path = osp.join(deep3dmap.__path__[0], 'model_zoo/mmcls.json')
     mmcls_urls = load_file(mmcls_json_path)
 
     return mmcls_urls
 
 
 def get_deprecated_model_names():
-    deprecate_json_path = osp.join(mmcv.__path__[0],
+    deprecate_json_path = osp.join(deep3dmap.__path__[0],
                                    'model_zoo/deprecated.json')
     deprecate_urls = load_file(deprecate_json_path)
     assert isinstance(deprecate_urls, dict)
@@ -240,7 +240,7 @@ class CheckpointLoader:
 
         checkpoint_loader = cls._get_checkpoint_loader(filename)
         class_name = checkpoint_loader.__name__
-        mmcv.print_log(f'Use {class_name} loader', logger)
+        deep3dmap.print_log(f'Use {class_name} loader', logger)
         return checkpoint_loader(filename, map_location)
 
 
@@ -632,7 +632,7 @@ def save_checkpoint(model, filename, optimizer=None, meta=None):
         meta = {}
     elif not isinstance(meta, dict):
         raise TypeError(f'meta must be a dict or None, but got {type(meta)}')
-    meta.update(mmcv_version=mmcv.__version__, time=time.asctime())
+    meta.update(deep3dmap_version=deep3dmap.__version__, time=time.asctime())
 
     if is_module_wrapper(model):
         model = model.module

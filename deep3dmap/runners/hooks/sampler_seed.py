@@ -12,6 +12,8 @@ class DistSamplerSeedHook(Hook):
     """
 
     def before_epoch(self, runner):
+        if hasattr(runner.data_loader.dataset, 'set_epoch'):
+            runner.data_loader.dataset.set_epoch(runner.epoch)
         if hasattr(runner.data_loader.sampler, 'set_epoch'):
             # in case the data loader uses `SequentialSampler` in Pytorch
             runner.data_loader.sampler.set_epoch(runner.epoch)

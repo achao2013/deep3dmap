@@ -11,8 +11,7 @@ from .logger import (DvcliveLoggerHook, LoggerHook, MlflowLoggerHook,
 from .lr_updater import LrUpdaterHook
 from .memory import EmptyCacheHook
 from .momentum_updater import MomentumUpdaterHook
-from .optimizer import (Fp16OptimizerHook, GradientCumulativeFp16OptimizerHook,
-                        GradientCumulativeOptimizerHook, OptimizerHook)
+from .optimizer import (GradientCumulativeOptimizerHook, OptimizerHook)
 from .profiler import ProfilerHook
 from .sampler_seed import DistSamplerSeedHook
 from .sync_buffer import SyncBuffersHook

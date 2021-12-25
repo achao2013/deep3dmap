@@ -2,8 +2,8 @@ import math
 
 import torch
 import torch.nn as nn
-
-import neural_renderer as nr
+if False:
+    import neural_renderer as nr
 from .utils import *
 
 

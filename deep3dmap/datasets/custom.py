@@ -3,13 +3,13 @@ import os.path as osp
 import warnings
 from collections import OrderedDict
 
-import mmcv
+import deep3dmap
 import numpy as np
-from mmcv.utils import print_log
+from deep3dmap.core.utils import print_log
 from terminaltables import AsciiTable
 from torch.utils.data import Dataset
 
-from mmdet.core import eval_map, eval_recalls
+from deep3dmap.core.evaluation import eval_map, eval_recalls
 from .builder import DATASETS
 from .pipelines import Compose
 
@@ -111,11 +111,11 @@ class CustomDataset(Dataset):
 
     def load_annotations(self, ann_file):
         """Load annotation from annotation file."""
-        return mmcv.load(ann_file)
+        return deep3dmap.core.fileio.load(ann_file)
 
     def load_proposals(self, proposal_file):
         """Load proposal from proposal file."""
-        return mmcv.load(proposal_file)
+        return deep3dmap.core.fileio.load(proposal_file)
 
     def get_ann_info(self, idx):
         """Get annotation by index.
@@ -254,7 +254,7 @@ class CustomDataset(Dataset):
 
         if isinstance(classes, str):
             # take it as a file path
-            class_names = mmcv.list_from_file(classes)
+            class_names = deep3dmap.core.list_from_file(classes)
         elif isinstance(classes, (tuple, list)):
             class_names = classes
         else:

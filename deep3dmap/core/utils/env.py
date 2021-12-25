@@ -9,7 +9,7 @@ from collections import defaultdict
 import cv2
 import torch
 
-import mmcv
+import deep3dmap
 from .parrots_wrapper import get_build_config
 
 
@@ -31,9 +31,9 @@ def collect_env():
                 ``torch.__config__.show()``.
             - TorchVision (optional): TorchVision version.
             - OpenCV: OpenCV version.
-            - MMCV: MMCV version.
-            - MMCV Compiler: The GCC version for compiling MMCV ops.
-            - MMCV CUDA Compiler: The CUDA version for compiling MMCV ops.
+            - deep3dmap: deep3dmap version.
+            - deep3dmap Compiler: The GCC version for compiling deep3dmap ops.
+            - deep3dmap CUDA Compiler: The CUDA version for compiling deep3dmap ops.
     """
     env_info = {}
     env_info['sys.platform'] = sys.platform
@@ -75,21 +75,22 @@ def collect_env():
 
     try:
         import torchvision
-        env_info['TorchVision'] = torchvision.__version__
+        if hasattr(torchvision, '__version__'):
+            env_info['TorchVision'] = torchvision.__version__
     except ModuleNotFoundError:
         pass
 
     env_info['OpenCV'] = cv2.__version__
 
-    env_info['MMCV'] = mmcv.__version__
+    env_info['deep3dmap'] = deep3dmap.__version__
 
     try:
         from .info import get_compiler_version, get_compiling_cuda_version
     except ModuleNotFoundError:
-        env_info['MMCV Compiler'] = 'n/a'
-        env_info['MMCV CUDA Compiler'] = 'n/a'
+        env_info['deep3dmap Compiler'] = 'n/a'
+        env_info['deep3dmap CUDA Compiler'] = 'n/a'
     else:
-        env_info['MMCV Compiler'] = get_compiler_version()
-        env_info['MMCV CUDA Compiler'] = get_compiling_cuda_version()
+        env_info['deep3dmap Compiler'] = get_compiler_version()
+        env_info['deep3dmap CUDA Compiler'] = get_compiling_cuda_version()
 
     return env_info
