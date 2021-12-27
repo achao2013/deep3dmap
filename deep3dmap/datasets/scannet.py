@@ -120,8 +120,7 @@ class ScanNetDataset(Dataset):
             'fragment': meta['scene'] + '_' + str(meta['fragment_id']),
             'epoch': [self.epoch],
         }
-        print('input keys:',items.keys())
-        print('fragment:',items['fragment'])
+
         if self.pipeline is not None:
             items = self.pipeline(items)
         return items

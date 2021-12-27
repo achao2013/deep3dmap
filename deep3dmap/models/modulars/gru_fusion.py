@@ -208,7 +208,7 @@ class GRUFusion(nn.Module):
             # delete computational graph to save memory
             self.global_volume[scale] = self.global_volume[scale].detach()
 
-        batch_size = len(inputs['img_metas']['fragment'])
+        batch_size = len(inputs['img_metas'])
         interval = 2 ** (self.cfg.N_LAYER - scale - 1)
 
         tsdf_target_all = None
@@ -218,7 +218,7 @@ class GRUFusion(nn.Module):
 
         # ---incremental fusion----
         for i in range(batch_size):
-            scene = inputs['img_metas']['scene'][i]  # scene name
+            scene = inputs['img_metas'][i]['scene']  # scene name
             global_origin = inputs['vol_origin'][i]  # origin of global volume
             origin = inputs['vol_origin_partial'][i]  # origin of part volume
 

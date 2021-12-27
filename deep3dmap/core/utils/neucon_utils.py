@@ -188,8 +188,8 @@ def sparse_to_dense_np(locs, values, dim, default_val):
 class SaveScene(object):
     def __init__(self, cfg):
         self.cfg = cfg
-        log_dir = cfg.LOGDIR.split('/')[-1]
-        self.log_dir = os.path.join('results', 'scene_' + cfg.DATASET + '_' + log_dir)
+        
+        self.save_scene_dir = os.path.join(cfg.rootdir, 'scene_' + cfg.dataset_name+ '_' + cfg.savedir_postfix)
         self.scene_name = None
         self.global_origin = None
         self.tsdf_volume = []  # not used during inference.
@@ -199,7 +199,7 @@ class SaveScene(object):
 
         self.keyframe_id = None
 
-        if cfg.VIS_INCREMENTAL:
+        if cfg.vis_incremental:
             self.vis = Visualizer()
 
     def close(self):
@@ -229,14 +229,14 @@ class SaveScene(object):
     def vis_incremental(self, epoch_idx, batch_idx, imgs, outputs):
         tsdf_volume = outputs['scene_tsdf'][batch_idx].data.cpu().numpy()
         origin = outputs['origin'][batch_idx].data.cpu().numpy()
-        if self.cfg.DATASET == 'demo':
+        if self.cfg.dataset_name == 'demo':
             origin[2] -= 1.5
 
         if (tsdf_volume == 1).all():
             logger.warning('No valid partial data for scene {}'.format(self.scene_name))
         else:
             # Marching cubes
-            mesh = self.tsdf2mesh(self.cfg.MODEL.VOXEL_SIZE, origin, tsdf_volume)
+            mesh = self.tsdf2mesh(self.cfg.voxel_size, origin, tsdf_volume)
             # vis
             key_frames = []
             for img in imgs[::3]:
@@ -252,20 +252,20 @@ class SaveScene(object):
             self.vis.vis_mesh(mesh)
 
     def save_incremental(self, epoch_idx, batch_idx, imgs, outputs):
-        save_path = os.path.join('incremental_' + self.log_dir + '_' + str(epoch_idx), self.scene_name)
+        save_path = os.path.join('/'.join(self.save_scene_dir.split('/')[-1]), 'incremental_' + self.save_scene_dir.split('/')[-1] + '_' + str(epoch_idx), self.scene_name)
         if not os.path.exists(save_path):
             os.makedirs(save_path)
 
         tsdf_volume = outputs['scene_tsdf'][batch_idx].data.cpu().numpy()
         origin = outputs['origin'][batch_idx].data.cpu().numpy()
-        if self.cfg.DATASET == 'demo':
+        if self.cfg.dataset_name == 'demo':
             origin[2] -= 1.5
 
         if (tsdf_volume == 1).all():
             logger.warning('No valid partial data for scene {}'.format(self.scene_name))
         else:
             # Marching cubes
-            mesh = self.tsdf2mesh(self.cfg.MODEL.VOXEL_SIZE, origin, tsdf_volume)
+            mesh = self.tsdf2mesh(self.cfg.voxel_size, origin, tsdf_volume)
             # save
             mesh.export(os.path.join(save_path, 'mesh_{}.ply'.format(self.keyframe_id)))
 
@@ -277,12 +277,12 @@ class SaveScene(object):
             logger.warning('No valid data for scene {}'.format(self.scene_name))
         else:
             # Marching cubes
-            mesh = self.tsdf2mesh(self.cfg.MODEL.VOXEL_SIZE, origin, tsdf_volume)
+            mesh = self.tsdf2mesh(self.cfg.voxel_size, origin, tsdf_volume)
             # save tsdf volume for atlas evaluation
             data = {'origin': origin,
-                    'voxel_size': self.cfg.MODEL.VOXEL_SIZE,
+                    'voxel_size': self.cfg.voxel_size,
                     'tsdf': tsdf_volume}
-            save_path = '{}_fusion_eval_{}'.format(self.log_dir, epoch)
+            save_path = '{}_fusion_eval_{}'.format(self.save_scene_dir, epoch)
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
             np.savez_compressed(
@@ -300,5 +300,5 @@ class SaveScene(object):
             scene = outputs['scene_name'][i]
             self.scene_name = scene.replace('/', '-')
 
-            if self.cfg.SAVE_SCENE_MESH:
-                self.save_scene_eval(epoch_idx, outputs, i)
+            
+            self.save_scene_eval(epoch_idx, outputs, i)

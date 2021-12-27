@@ -5,13 +5,13 @@ import os.path as osp
 import time
 import warnings
 
-
+import deep3dmap
 import torch
-import deep3dmap.core
-from deep3dmap.core.utils import Config, DictAction
-from deep3dmap.core.utils import fuse_conv_bn
+from deep3dmap import Config, DictAction
+from mmcv.cnn import fuse_conv_bn
 from deep3dmap.parallel import MMDataParallel, MMDistributedDataParallel
-from deep3dmap.runners import (get_dist_info, init_dist, load_checkpoint)
+from deep3dmap.runners import (get_dist_info, init_dist, load_checkpoint,
+                         wrap_fp16_model)
 
 from deep3dmap.datasets import (build_dataloader, build_dataset,
                             replace_ImageToTensor)
@@ -56,7 +56,7 @@ def single_gpu_test(model,
                 img_show = img[:h, :w, :]
 
                 ori_h, ori_w = img_meta['ori_shape'][:-1]
-                img_show = deep3dmap.core.utils.imresize(img_show, (ori_w, ori_h))
+                img_show = mmcv.imresize(img_show, (ori_w, ori_h))
 
                 if out_dir:
                     out_file = osp.join(out_dir, img_meta['ori_filename'])
@@ -105,7 +105,7 @@ def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
     dataset = data_loader.dataset
     rank, world_size = get_dist_info()
     if rank == 0:
-        prog_bar = deep3dmap.core.utils.progressbar.ProgressBar(len(dataset))
+        prog_bar = mmcv.ProgressBar(len(dataset))
     time.sleep(2)  # This line can prevent deadlock problem in some cases.
     for i, data in enumerate(data_loader):
         with torch.no_grad():
@@ -140,7 +140,7 @@ def collect_results_cpu(result_part, size, tmpdir=None):
                                 dtype=torch.uint8,
                                 device='cuda')
         if rank == 0:
-            deep3dmap.core.utils.mkdir_or_exist('.dist_test')
+            mmcv.mkdir_or_exist('.dist_test')
             tmpdir = tempfile.mkdtemp(dir='.dist_test')
             tmpdir = torch.tensor(
                 bytearray(tmpdir.encode()), dtype=torch.uint8, device='cuda')
@@ -148,9 +148,9 @@ def collect_results_cpu(result_part, size, tmpdir=None):
         dist.broadcast(dir_tensor, 0)
         tmpdir = dir_tensor.cpu().numpy().tobytes().decode().rstrip()
     else:
-        deep3dmap.core.utils.mkdir_or_exist(tmpdir)
+        mmcv.mkdir_or_exist(tmpdir)
     # dump the part result to the dir
-    deep3dmap.core.utils.dump(result_part, osp.join(tmpdir, f'part_{rank}.pkl'))
+    mmcv.dump(result_part, osp.join(tmpdir, f'part_{rank}.pkl'))
     dist.barrier()
     # collect all parts
     if rank != 0:
@@ -160,7 +160,7 @@ def collect_results_cpu(result_part, size, tmpdir=None):
         part_list = []
         for i in range(world_size):
             part_file = osp.join(tmpdir, f'part_{i}.pkl')
-            part_list.append(deep3dmap.core.utils.load(part_file))
+            part_list.append(mmcv.load(part_file))
         # sort the results
         ordered_results = []
         for res in zip(*part_list):
@@ -310,7 +310,7 @@ def main():
         cfg.merge_from_dict(args.cfg_options)
     # import modules from string list.
     if cfg.get('custom_imports', None):
-        from deep3dmap.core.utils import import_modules_from_strings
+        from mmcv.utils import import_modules_from_strings
         import_modules_from_strings(**cfg['custom_imports'])
     # set cudnn_benchmark
     if cfg.get('cudnn_benchmark', False):
@@ -355,7 +355,7 @@ def main():
     rank, _ = get_dist_info()
     # allows not to create
     if args.work_dir is not None and rank == 0:
-        deep3dmap.core.utils.mkdir_or_exist(osp.abspath(args.work_dir))
+        mmcv.mkdir_or_exist(osp.abspath(args.work_dir))
         timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
         json_file = osp.join(args.work_dir, f'eval_{timestamp}.json')
 
@@ -370,8 +370,10 @@ def main():
 
     # build the model and load checkpoint
     cfg.model.train_cfg = None
-    model = build_reconstruction(cfg.model, test_cfg=cfg.get('test_cfg'))
- 
+    model = build_detector(cfg.model, test_cfg=cfg.get('test_cfg'))
+    fp16_cfg = cfg.get('fp16', None)
+    if fp16_cfg is not None:
+        wrap_fp16_model(model)
     checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
     if args.fuse_conv_bn:
         model = fuse_conv_bn(model)
@@ -398,7 +400,7 @@ def main():
     if rank == 0:
         if args.out:
             print(f'\nwriting results to {args.out}')
-            deep3dmap.core.utils.dump(outputs, args.out)
+            mmcv.dump(outputs, args.out)
         kwargs = {} if args.eval_options is None else args.eval_options
         if args.format_only:
             dataset.format_results(outputs, **kwargs)
@@ -415,7 +417,7 @@ def main():
             print(metric)
             metric_dict = dict(config=args.config, metric=metric)
             if args.work_dir is not None and rank == 0:
-                deep3dmap.core.utils.dump(metric_dict, json_file)
+                mmcv.dump(metric_dict, json_file)
 
 
 if __name__ == '__main__':

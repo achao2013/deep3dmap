@@ -4,7 +4,7 @@ import torch.nn as nn
 from deep3dmap.models.backbones.mnas_multi import MnasMulti
 from ..neucon_network import NeuConNet
 from ..modulars.gru_fusion import GRUFusion
-from deep3dmap.core.utils.neucon_utils import tocuda
+from deep3dmap.core.utils.neucon_utils import tocuda, SaveScene
 from ..builder import MODELS
 from deep3dmap.models.frameworks import BaseFramework
 
@@ -26,7 +26,8 @@ class NeuralRecon(BaseFramework):
         self.neucon_net = NeuConNet(model_cfgs)
         # for fusing to global volume
         self.fuse_to_global = GRUFusion(model_cfgs, direct_substitute=True)
-
+        if model_cfgs.save_scene and model_cfgs.save_scene_params:
+            self.save_mesh_scene = SaveScene(model_cfgs.save_scene_params)
         
     def extract_feat(self, img):
         """Directly extract features from the backbone+neck."""
@@ -46,7 +47,7 @@ class NeuralRecon(BaseFramework):
         """
         assert isinstance(imgs, list) or isinstance(imgs, tuple)
         return [self.extract_feat(img) for img in imgs]
-    def forward_train(self, inputs, save_mesh=False):
+    def forward_train(self, inputs, cur_epoch, save_mesh=False):
         '''
 
         :param inputs: dict: {
@@ -93,7 +94,9 @@ class NeuralRecon(BaseFramework):
         # image feature extraction
         # in: images; out: feature maps
         features = self.extract_feats(imgs)
-        print("features:",len(features),len(features[0][0]),features[0][0].shape)
+        #features List(List(Tensor))
+        #print("features:",len(features),len(features[0][0]),features[0][0].shape)
+        #features: 9 1 torch.Size([1, 24, 120, 160])
 
         # coarse-to-fine decoder: SparseConv and GRU Fusion.
         # in: image feature; out: sparse coords and tsdf
@@ -103,23 +106,99 @@ class NeuralRecon(BaseFramework):
         if not self.training and 'coords' in outputs.keys():
             outputs = self.fuse_to_global(outputs['coords'], outputs['tsdf'], inputs, self.n_scales, outputs, save_mesh)
 
+
+
+        #weighted loss
+        for i, (k, v) in enumerate(loss_dict.items()):
+            loss_dict[k] = v * self.model_cfg.LW[i]
+
         # gather loss.
         print_loss = 'Loss: '
         for k, v in loss_dict.items():
             print_loss += f'{k}: {v} '
 
-        weighted_loss = 0
+        return loss_dict
 
-        for i, (k, v) in enumerate(loss_dict.items()):
-            weighted_loss += v * self.model_cfg.LW[i]
-
-        loss_dict.update({'total_loss': weighted_loss})
-        return outputs, loss_dict
     
-    def simple_test(self, img, img_metas, **kwargs):
+    def forward_test(self, inputs, cur_epoch, save_mesh=True):
+        '''
+
+        :param inputs: dict: {
+            'imgs':                    (Tensor), images,
+                                    (batch size, number of views, C, H, W)
+            'vol_origin':              (Tensor), origin of the full voxel volume (xyz position of voxel (0, 0, 0)),
+                                    (batch size, 3)
+            'vol_origin_partial':      (Tensor), origin of the partial voxel volume (xyz position of voxel (0, 0, 0)),
+                                    (batch size, 3)
+            'world_to_aligned_camera': (Tensor), matrices: transform from world coords to aligned camera coords,
+                                    (batch size, number of views, 4, 4)
+            'proj_matrices':           (Tensor), projection matrix,
+                                    (batch size, number of views, number of scales, 4, 4)
+            when we have ground truth:
+            'tsdf_list':               (List), tsdf ground truth for each level,
+                                    [(batch size, DIM_X, DIM_Y, DIM_Z)]
+            'occ_list':                (List), occupancy ground truth for each level,
+                                    [(batch size, DIM_X, DIM_Y, DIM_Z)]
+            others: unused in network
+        }
+        :param save_mesh: a bool to indicate whether or not to save the reconstructed mesh of current sample
+        :return: outputs: dict: {
+            'coords':                  (Tensor), coordinates of voxels,
+                                    (number of voxels, 4) (4 : batch ind, x, y, z)
+            'tsdf':                    (Tensor), TSDF of voxels,
+                                    (number of voxels, 1)
+            When it comes to save results:
+            'origin':                  (List), origin of the predicted partial volume,
+                                    [3]
+            'scene_tsdf':              (List), predicted tsdf volume,
+                                    [(nx, ny, nz)]
+        }
+                 loss_dict: dict: {
+            'tsdf_occ_loss_X':         (Tensor), multi level loss
+            'total_loss':              (Tensor), total loss
+        }
+        '''
+        
+        outputs = {}
+        inputs = tocuda(inputs)
+        imgs = torch.unbind(inputs['imgs'], 1)
+        #print('imgs:',imgs)
+
+        # image feature extraction
+        # in: images; out: feature maps
+        features = self.extract_feats(imgs)
+        #features List(List(Tensor))
+        #print("features:",len(features),len(features[0][0]),features[0][0].shape)
+        #features: 9 1 torch.Size([1, 24, 120, 160])
+
+        # coarse-to-fine decoder: SparseConv and GRU Fusion.
+        # in: image feature; out: sparse coords and tsdf
+        outputs, loss_dict = self.neucon_net(features, inputs, outputs)
+
+        if save_mesh:
+            self.save_mesh_scene(outputs, inputs, cur_epoch)
+
+        # fuse to global volume.
+        if not self.training and 'coords' in outputs.keys():
+            outputs = self.fuse_to_global(outputs['coords'], outputs['tsdf'], inputs, self.n_scales, outputs, save_mesh)
+
+
+
+        #weighted loss
+        for i, (k, v) in enumerate(loss_dict.items()):
+            loss_dict[k] = v * self.model_cfg.LW[i]
+
+        # gather loss.
+        print_loss = 'Loss: '
+        for k, v in loss_dict.items():
+            print_loss += f'{k}: {v} '
+
+        return loss_dict
+
+    def simple_test(self, inputs, cur_epoch, **kwargs):
         pass
 
     
-    def aug_test(self, imgs, img_metas, **kwargs):
+    def aug_test(self, inputs, cur_epoch, **kwargs):
         """Test function with test time augmentation."""
         pass

@@ -1,5 +1,5 @@
 #main
-work_dir="results/celeba"
+work_dir="results/gan2shape_celeba"
 distributed=True
 dist_params = dict(backend='nccl')
 checkpoint_config = dict(interval=1)
@@ -20,6 +20,7 @@ model = dict(
         model_name= "gan2shape_face",
         category= "face",
         distributed=distributed,
+        checkpoint_dir=work_dir,
         share_weight= False,  # true: share weight in distributed training
         flip1_cfg= [False, False, False, False],
         flip3_cfg= [True, False, False, False],

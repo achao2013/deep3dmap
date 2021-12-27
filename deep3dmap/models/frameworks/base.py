@@ -55,7 +55,7 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
         assert isinstance(imgs, list)
         return [self.extract_feat(img) for img in imgs]
 
-    def forward_train(self, imgs, img_metas, **kwargs):
+    def forward_train(self, inputs, cur_epoch, **kwargs):
         """
         Args:
             img (list[Tensor]): List of tensors of shape (1, C, H, W).
@@ -70,19 +70,17 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
         # NOTE the batched image size information may be useful, e.g.
         # in DETR, this is needed for the construction of masks, which is
         # then used for the transformer_head.
-        batch_input_shape = tuple(imgs[0].size()[-2:])
-        for img_meta in img_metas:
-            img_meta['batch_input_shape'] = batch_input_shape
+        pass
 
     async def async_simple_test(self, img, img_metas, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
-    def simple_test(self, img, img_metas, **kwargs):
+    def simple_test(self, inputs, cur_epoch, **kwargs):
         pass
 
     @abstractmethod
-    def aug_test(self, imgs, img_metas, **kwargs):
+    def aug_test(self, inputs, cur_epoch, **kwargs):
         """Test function with test time augmentation."""
         pass
 
@@ -104,7 +102,7 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
         else:
             raise NotImplementedError
 
-    def forward_test(self, imgs, img_metas, **kwargs):
+    def forward_test(self, inputs, cur_epoch, **kwargs):
         """
         Args:
             imgs (List[Tensor]): the outer list indicates test-time
@@ -114,41 +112,9 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
                 augs (multiscale, flip, etc.) and the inner list indicates
                 images in a batch.
         """
-        for var, name in [(imgs, 'imgs'), (img_metas, 'img_metas')]:
-            if not isinstance(var, list):
-                raise TypeError(f'{name} must be a list, but got {type(var)}')
+        pass
 
-        num_augs = len(imgs)
-        if num_augs != len(img_metas):
-            raise ValueError(f'num of augmentations ({len(imgs)}) '
-                             f'!= num of image meta ({len(img_metas)})')
-
-        # NOTE the batched image size information may be useful, e.g.
-        # in DETR, this is needed for the construction of masks, which is
-        # then used for the transformer_head.
-        for img, img_meta in zip(imgs, img_metas):
-            batch_size = len(img_meta)
-            for img_id in range(batch_size):
-                img_meta[img_id]['batch_input_shape'] = tuple(img.size()[-2:])
-
-        if num_augs == 1:
-            # proposals (List[List[Tensor]]): the outer list indicates
-            # test-time augs (multiscale, flip, etc.) and the inner list
-            # indicates images in a batch.
-            # The Tensor should have a shape Px4, where P is the number of
-            # proposals.
-            if 'proposals' in kwargs:
-                kwargs['proposals'] = kwargs['proposals'][0]
-            return self.simple_test(imgs[0], img_metas[0], **kwargs)
-        else:
-            assert imgs[0].size(0) == 1, 'aug test does not support ' \
-                                         'inference with batch size ' \
-                                         f'{imgs[0].size(0)}'
-            # TODO: support test augmentation for predefined proposals
-            assert 'proposals' not in kwargs
-            return self.aug_test(imgs, img_metas, **kwargs)
-
-    def forward(self, inputs, return_loss=True, **kwargs):
+    def forward(self, inputs, cur_epoch, return_loss=True, **kwargs):
         """Calls either :func:`forward_train` or :func:`forward_test` depending
         on whether ``return_loss`` is ``True``.
 
@@ -160,9 +126,9 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
         """
 
         if return_loss:
-            return self.forward_train(inputs, **kwargs)
+            return self.forward_train(inputs, cur_epoch, **kwargs)
         else:
-            return self.forward_test(inputs, **kwargs)
+            return self.forward_test(inputs, cur_epoch, **kwargs)
 
     def _parse_losses(self, losses):
         """Parse the raw outputs (losses) of the network.
@@ -199,7 +165,7 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
 
         return loss, log_vars
 
-    def train_step(self, data, optimizer):
+    def train_step(self, data, optimizer, cur_epoch):
         """The iteration step during training.
 
         This method defines an iteration step during training, except for the
@@ -226,7 +192,7 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
                   DDP, it means the batch size on each GPU), which is used for
                   averaging the logs.
         """
-        losses = self(data)
+        losses = self(data,cur_epoch)
         loss, log_vars = self._parse_losses(losses)
 
         outputs = dict(
@@ -234,14 +200,14 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
 
         return outputs
 
-    def val_step(self, data, optimizer=None):
+    def val_step(self, data, optimizer=None, cur_epoch=0):
         """The iteration step during validation.
 
         This method shares the same signature as :func:`train_step`, but used
         during val epochs. Note that the evaluation after training epochs is
         not implemented with this method, but an evaluation hook.
         """
-        losses = self(**data)
+        losses = self(data, cur_epoch)
         loss, log_vars = self._parse_losses(losses)
 
         outputs = dict(
