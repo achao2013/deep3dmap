@@ -1,5 +1,6 @@
 #common
 N_VIEWS=9
+VOXEL_SIZE=0.04
 work_dir="results/neucon_scannet"
 distributed=True
 dist_params = dict(backend='nccl')
@@ -23,7 +24,7 @@ img_norm_cfg = dict(
 train_pipeline = [
     dict(type='SeqResizeImage', size=(640,480)),
     dict(type='SeqToTensor'),#in sequence, we need to tensor first 
-    dict(type='SeqRandomTransformSpace', voxel_dim=[96, 96, 96], voxel_size=0.04, random_rotation=True, random_translation=True,
+    dict(type='SeqRandomTransformSpace', voxel_dim=[96, 96, 96], voxel_size=VOXEL_SIZE, random_rotation=True, random_translation=True,
                  paddingXY=0.1, paddingZ=0.025, max_epoch=29),
     dict(type='SeqIntrinsicsPoseToProjection', n_views=N_VIEWS, stride=4),
     dict(type='SeqNormalizeImages', **img_norm_cfg),
@@ -34,7 +35,7 @@ train_pipeline = [
 test_pipeline = [
     dict(type='SeqResizeImage', size=(640,480)),
     dict(type='SeqToTensor'),#in sequence, we need to tensor first 
-    dict(type='SeqRandomTransformSpace', voxel_dim=[96, 96, 96], voxel_size=0.04, random_rotation=True, random_translation=True,
+    dict(type='SeqRandomTransformSpace', voxel_dim=[96, 96, 96], voxel_size=VOXEL_SIZE, random_rotation=True, random_translation=True,
                  paddingXY=0.1, paddingZ=0.025, max_epoch=29),
     dict(type='SeqIntrinsicsPoseToProjection', n_views=N_VIEWS, stride=4),
     dict(type='SeqNormalizeImages', **img_norm_cfg),
@@ -69,12 +70,12 @@ model = dict(
             rootdir=work_dir,
             savedir_postfix='save',
             dataset_name=dataset_type,
-            voxel_size=0.04,
+            voxel_size=VOXEL_SIZE,
             vis_incremental=False
         ),
         N_LAYER=3,
         N_VOX=[96, 96, 96],
-        VOXEL_SIZE=0.04,
+        VOXEL_SIZE=VOXEL_SIZE,
         TRAIN_NUM_SAMPLE=[4096, 16384, 65536],
         TEST_NUM_SAMPLE=[4096, 16384, 65536],
         BACKBONE2D=dict(
@@ -95,7 +96,11 @@ model = dict(
 
 
 ##runner settings
-
+eval_epoch="47"
+evaluation=dict(data_path="/media/achao/Innov8/database/scannet-download/scene_test",
+                save_path=work_dir+'/scene_' + dataset_type+ '_save_fusion_eval_'+eval_epoch,
+                gt_path="/media/achao/Innov8/database/scannet-download/scene_test",
+                max_depth=10,num_workers=2,loader_num_workers=2,n_proc=2,n_gpu=2)
 optimizer_config = dict(grad_clip=dict(max_norm=1, norm_type=2))
 lr_config = dict(
     policy='step',

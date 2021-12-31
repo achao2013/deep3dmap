@@ -125,10 +125,10 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
         the outer list indicating test time augmentations.
         """
 
-        if return_loss:
+        if self.training:
             return self.forward_train(inputs, cur_epoch, **kwargs)
         else:
-            return self.forward_test(inputs, cur_epoch, **kwargs)
+            return self.forward_test(inputs, cur_epoch, return_loss, **kwargs)
 
     def _parse_losses(self, losses):
         """Parse the raw outputs (losses) of the network.

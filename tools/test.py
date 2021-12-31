@@ -25,12 +25,13 @@ import time
 import torch.distributed as dist
 from deep3dmap.core.utils import tensor2imgs
 
-from deep3dmap.core import encode_mask_results
+
 
 
 def single_gpu_test(model,
                     data_loader,
                     show=False,
+                    with_loss=False,
                     out_dir=None,
                     show_score_thr=0.3):
     model.eval()
@@ -39,7 +40,10 @@ def single_gpu_test(model,
     prog_bar = deep3dmap.core.utils.ProgressBar(len(dataset))
     for i, data in enumerate(data_loader):
         with torch.no_grad():
-            result = model(return_loss=False, rescale=True, **data)
+            if with_loss:
+                result = model(return_loss=True, rescale=True, **data)
+            else:
+                result = model(return_loss=False, rescale=True, **data)
 
         batch_size = len(result)
         if show or out_dir:
@@ -70,10 +74,7 @@ def single_gpu_test(model,
                     out_file=out_file,
                     score_thr=show_score_thr)
 
-        # encode mask results
-        if isinstance(result[0], tuple):
-            result = [(bbox_results, encode_mask_results(mask_results))
-                      for bbox_results, mask_results in result]
+
         results.extend(result)
 
         for _ in range(batch_size):
@@ -81,7 +82,7 @@ def single_gpu_test(model,
     return results
 
 
-def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
+def multi_gpu_test(model, data_loader, with_loss=False, tmpdir=None, gpu_collect=False):
     """Test model with multiple gpus.
 
     This method tests model with multiple gpus and collects the results
@@ -109,11 +110,10 @@ def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
     time.sleep(2)  # This line can prevent deadlock problem in some cases.
     for i, data in enumerate(data_loader):
         with torch.no_grad():
-            result = model(return_loss=False, rescale=True, **data)
-            # encode mask results
-            if isinstance(result[0], tuple):
-                result = [(bbox_results, encode_mask_results(mask_results))
-                          for bbox_results, mask_results in result]
+            if with_loss:
+                result = model(return_loss=True, rescale=True, **data)
+            else:
+                result = model(return_loss=False, rescale=True, **data)
         results.extend(result)
 
         if rank == 0:
@@ -402,20 +402,20 @@ def main():
         kwargs = {} if args.eval_options is None else args.eval_options
         if args.format_only:
             dataset.format_results(outputs, **kwargs)
-        if args.eval:
-            eval_kwargs = cfg.get('evaluation', {}).copy()
-            # hard-code way to remove EvalHook args
-            for key in [
-                    'interval', 'tmpdir', 'start', 'gpu_collect', 'save_best',
-                    'rule'
-            ]:
-                eval_kwargs.pop(key, None)
-            eval_kwargs.update(dict(metric=args.eval, **kwargs))
-            metric = dataset.evaluate(outputs, **eval_kwargs)
-            print(metric)
-            metric_dict = dict(config=args.config, metric=metric)
-            if args.work_dir is not None and rank == 0:
-                deep3dmap.core.utils.dump(metric_dict, json_file)
+    if args.eval:
+        eval_kwargs = cfg.get('evaluation', {}).copy()
+        # hard-code way to remove EvalHook args
+        for key in [
+                'interval', 'tmpdir', 'start', 'gpu_collect', 'save_best',
+                'rule'
+        ]:
+            eval_kwargs.pop(key, None)
+        eval_kwargs.update(dict(metric=args.eval, **kwargs))
+        metric = dataset.evaluate(outputs, **eval_kwargs)
+        print(metric)
+        metric_dict = dict(config=args.config, metric=metric)
+        if args.work_dir is not None and rank == 0:
+            deep3dmap.core.utils.dump(metric_dict, json_file)
 
 
 if __name__ == '__main__':

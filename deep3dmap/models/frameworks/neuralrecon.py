@@ -102,9 +102,6 @@ class NeuralRecon(BaseFramework):
         # in: image feature; out: sparse coords and tsdf
         outputs, loss_dict = self.neucon_net(features, inputs, outputs)
 
-        # fuse to global volume.
-        if not self.training and 'coords' in outputs.keys():
-            outputs = self.fuse_to_global(outputs['coords'], outputs['tsdf'], inputs, self.n_scales, outputs, save_mesh)
 
 
 
@@ -120,7 +117,7 @@ class NeuralRecon(BaseFramework):
         return loss_dict
 
     
-    def forward_test(self, inputs, cur_epoch, save_mesh=True):
+    def forward_test(self, inputs, cur_epoch, return_loss=True, save_mesh=True):
         '''
 
         :param inputs: dict: {
@@ -175,14 +172,14 @@ class NeuralRecon(BaseFramework):
         # in: image feature; out: sparse coords and tsdf
         outputs, loss_dict = self.neucon_net(features, inputs, outputs)
 
-        if save_mesh:
-            self.save_mesh_scene(outputs, inputs, cur_epoch)
+
 
         # fuse to global volume.
-        if not self.training and 'coords' in outputs.keys():
+        if 'coords' in outputs.keys():
             outputs = self.fuse_to_global(outputs['coords'], outputs['tsdf'], inputs, self.n_scales, outputs, save_mesh)
 
-
+        if save_mesh:
+            self.save_mesh_scene(outputs, inputs, cur_epoch)
 
         #weighted loss
         for i, (k, v) in enumerate(loss_dict.items()):
@@ -192,8 +189,10 @@ class NeuralRecon(BaseFramework):
         print_loss = 'Loss: '
         for k, v in loss_dict.items():
             print_loss += f'{k}: {v} '
-
-        return loss_dict
+        if return_loss:
+            return outputs, loss_dict
+        else:
+            return outputs
 
     def simple_test(self, inputs, cur_epoch, **kwargs):
         pass
