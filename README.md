@@ -11,6 +11,10 @@ This is an 3d reconstruction pipeline in deep learning.
 
   We decompose the reconstruction framework into different components and one can easily construct a customized reconstruction framework by combining different modules.
 
+- **plug and play deep modules**
+  
+  We plug and use some polular deep modules like stylegan2, 
+
 - **Support of multiple frameworks of 3d reconstruction from image or images**
 
   The toolbox directly supports popular and contemporary reconstruction frameworks, *e.g.* , etc.
@@ -21,20 +25,21 @@ This is an 3d reconstruction pipeline in deep learning.
 
 - **support varigrained reconstructon**
   
-  We suppert face, body, indoor, outdoor and so on
+  We support face, body, indoor, outdoor and so on
   
 - **multiple demo applications**
   
-  We provide abundant toy demos 
+  We provide abundant toy demos or examples. 
 
 </details>
 
 # Supported methods:
 
-- [x] Learning Multi-Path Architectures for Multi-view Consistent 3D Face Alignment
+
 - [x] Do 2D GANs Know 3D Shape? Unsupervised 3D Shape Reconstruction from 2D Image GANs
 - [x] NeuralRecon: Real-Time Coherent 3D Reconstruction from Monocular Video
 - [x] Joint 3D Face Reconstruction and Dense Alignment with Position Map Regression Network
+- [x] Multi-view face reconstruction example using pytorch3d.
 - [ ] GNeRF: GAN-based Neural Radiance Field without Posed Camera
 - [ ] GIRAFFE: Representing Scenes as Compositional Generative Neural Feature Fields
 
