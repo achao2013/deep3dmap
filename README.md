@@ -51,7 +51,7 @@ Please refer to [get_started.md](docs/get_started.md) for installation.
 
 
 
-## License
+# License
 
 This project is released under the [Apache 2.0 license](LICENSE).
 
