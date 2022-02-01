@@ -1,6 +1,6 @@
 
 # deep3dmap
-This is an 3d reconstruction pipeline in deep learning.
+This is an 3d reconstruction pipeline in deep learning for research use.
 
 # Introduction
 
