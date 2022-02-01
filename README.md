@@ -50,10 +50,15 @@ This is an 3d reconstruction pipeline in deep learning for research use.
 Please refer to [get_started.md](docs/get_started.md) for installation.
 
 
+
+## License
+
+This project is released under the [Apache 2.0 license](LICENSE).
+
 # reference
 
 <details open>
-<summary>different from mmcv</summary>
+<summary>mmcv and mmdetection, the differences are as follows: </summary>
 
 - **can use both dataset and dataloader to prepare input data**
   
