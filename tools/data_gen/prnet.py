@@ -1,5 +1,6 @@
 import numpy as np
 import os, sys
+sys.path.append('.')
 import scipy
 
 from skimage.transform import estimate_transform, warp
@@ -12,10 +13,10 @@ from time import time
 import argparse
 import ast
 
-import tdmm
-import tdmm.geometry.camera as camera
-import tdmm.mesh as mesh
-import tdmm.mesh_cython as mesh_cython
+import deep3dmap.core.renderer.demo_renderer as demo_renderer
+import deep3dmap.core.renderer.demo_renderer.geometry.camera as camera
+import deep3dmap.core.renderer.demo_renderer.mesh as mesh
+import deep3dmap.core.renderer.demo_renderer.mesh_cython as mesh_cython
 
 end_list = np.array([17, 22, 27, 42, 48, 31, 36, 68], dtype = np.int32) - 1
 
@@ -23,24 +24,24 @@ class GeneratePos:
     '''
     '''
     def __init__(self, resolution_inp, resolution, 
-        model_path = os.path.join('tools/data_gen/tdmm/Data/BFM.mat'), model_info_path = os.path.join('tools/data_gen/tdmm/Data/BFM_info.mat')):
+        model_path = os.path.join('magicbox/face/BFM.mat'), model_info_path = os.path.join('magicbox/face/BFM_info.mat')):
         
         self.resolution_inp = resolution_inp
         self.resolution = resolution
         # load model
-        self.model = tdmm.load_model(model_path)
+        self.model = demo_renderer.load_model(model_path)
         # model information
-        model_info = tdmm.load_model_info(model_info_path)
+        model_info = demo_renderer.load_model_info(model_info_path)
         uv_coords = model_info['uv_coords']
-        nver, ntri = tdmm.get_model_num(self.model)
+        nver, ntri = demo_renderer.get_model_num(self.model)
         projected_vertices = np.vstack((uv_coords*(self.resolution - 1), np.zeros((1, nver))))
         projected_vertices[1,:] = self.resolution - 1 - projected_vertices[1,:]
         self.uv_vertices = projected_vertices.copy()
 
-        self.triangles = tdmm.get_triangles(self.model)
-        # n_shape_para, n_exp_para = tdmm.get_para_num(model)
+        self.triangles = demo_renderer.get_triangles(self.model)
+        # n_shape_para, n_exp_para = demo_renderer.get_para_num(model)
         # n_tex_para = n_shape_para
-        self.kpt_ind = tdmm.get_kpt_ind(self.model)
+        self.kpt_ind = demo_renderer.get_kpt_ind(self.model)
 
     def detect_kpt(self, kpt):
         # kpt: 3x68

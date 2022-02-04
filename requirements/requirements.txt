@@ -1,0 +1,170 @@
+addict==2.4.0
+aiohttp==3.7.4.post0
+aiohttp-cors==0.7.0
+aioredis==1.3.1
+anyio==3.3.0
+appdirs==1.4.4
+argcomplete==1.12.3
+argon2-cffi==20.1.0
+async-timeout==3.0.1
+attrs==21.2.0
+Babel==2.9.1
+backcall==0.2.0
+beautifulsoup4 @ file:///home/linux1/recipes/ci/beautifulsoup4_1610988766420/work
+bleach==4.0.0
+blessings==1.7
+brotlipy==0.7.0
+cached-property==1.5.2
+cachetools==4.2.2
+certifi==2021.5.30
+cffi @ file:///tmp/build/80754af9/cffi_1625814693446/work
+chardet @ file:///tmp/build/80754af9/chardet_1607706768982/work
+click==8.0.1
+colorama==0.4.4
+conda==4.10.3
+conda-build==3.21.4
+conda-package-handling @ file:///tmp/build/80754af9/conda-package-handling_1618262151086/work
+cryptography @ file:///tmp/build/80754af9/cryptography_1616769182610/work
+cycler==0.10.0
+Cython==0.29.24
+debugpy==1.4.1
+decorator==5.0.9
+defusedxml==0.7.1
+deprecation==2.1.0
+entrypoints==0.3
+filelock @ file:///home/linux1/recipes/ci/filelock_1610993975404/work
+freetype-py==2.2.0
+future==0.18.2
+gdown==3.13.0
+glob2 @ file:///home/linux1/recipes/ci/glob2_1610991677669/work
+google-api-core==1.31.2
+google-auth==1.35.0
+googleapis-common-protos==1.53.0
+gpustat==0.6.0
+grpcio==1.39.0
+h5py==3.3.0
+hiredis==2.0.0
+idna @ file:///home/linux1/recipes/ci/idna_1610986105248/work
+imageio==2.9.0
+importlib-metadata==4.6.4
+ipykernel==6.2.0
+ipython==7.26.0
+ipython-genutils==0.2.0
+ipywidgets==7.6.3
+jedi==0.18.0
+Jinja2 @ file:///tmp/build/80754af9/jinja2_1612213139570/work
+joblib==1.0.1
+json5==0.9.6
+jsonschema==3.2.0
+jupyter-client==7.0.1
+jupyter-core==4.7.1
+jupyter-packaging==0.10.4
+jupyter-server==1.10.2
+jupyterlab==3.1.7
+jupyterlab-pygments==0.1.2
+jupyterlab-server==2.7.1
+jupyterlab-widgets==1.0.0
+kiwisolver==1.3.1
+libarchive-c @ file:///tmp/build/80754af9/python-libarchive-c_1617780486945/work
+llvmlite==0.37.0
+loguru==0.5.3
+Mako==1.1.5
+MarkupSafe @ file:///tmp/build/80754af9/markupsafe_1621528142364/work
+matplotlib==3.4.3
+matplotlib-inline==0.1.2
+mistune==0.8.4
+mkl-fft==1.3.0
+mkl-random==1.1.1
+mkl-service==2.3.0
+msgpack==1.0.2
+multidict==5.1.0
+nbclassic==0.3.1
+nbclient==0.5.4
+nbconvert==6.1.0
+nbformat==5.1.3
+nest-asyncio==1.5.1
+networkx==2.6.2
+neural-renderer-pytorch==1.1.3
+notebook==6.4.3
+numba==0.54.0
+numpy==1.20.3
+nvidia-ml-py3==7.352.0
+olefile==0.46
+open3d==0.9.0.0
+opencensus==0.7.13
+opencensus-context==0.1.2
+opencv-python==4.5.3.56
+packaging==21.0
+pandas==1.3.2
+pandocfilters==1.4.3
+parso==0.8.2
+pexpect==4.8.0
+pickleshare==0.7.5
+Pillow @ file:///tmp/build/80754af9/pillow_1625655818400/work
+pkginfo==1.7.1
+prometheus-client==0.11.0
+prompt-toolkit==3.0.20
+protobuf==3.17.3
+psutil @ file:///tmp/build/80754af9/psutil_1612298016854/work
+ptyprocess==0.7.0
+py-spy==0.3.8
+pyasn1==0.4.8
+pyasn1-modules==0.2.8
+pycocotools==2.0.3
+pycosat==0.6.3
+pycparser @ file:///tmp/build/80754af9/pycparser_1594388511720/work
+pycuda==2021.1
+pydantic==1.8.2
+pyglet==1.5.19
+Pygments==2.10.0
+PyOpenGL @ file:///home/achao/3d/pyopengl
+pyOpenSSL @ file:///tmp/build/80754af9/pyopenssl_1608057966937/work
+pyparsing==2.4.7
+pyrender==0.1.45
+pyrsistent==0.18.0
+PySocks @ file:///tmp/build/80754af9/pysocks_1594394576006/work
+python-dateutil==2.8.2
+pytools==2021.2.8
+pytz @ file:///tmp/build/80754af9/pytz_1612215392582/work
+PyWavelets==1.1.1
+PyYAML==5.4.1
+pyzmq==22.2.1
+ray==1.5.2
+redis==3.5.3
+requests @ file:///tmp/build/80754af9/requests_1608241421344/work
+requests-unixsocket==0.2.0
+rsa==4.7.2
+ruamel-yaml-conda @ file:///tmp/build/80754af9/ruamel_yaml_1616016701961/work
+scikit-image==0.18.2
+scikit-learn==0.24.2
+scipy==1.7.1
+Send2Trash==1.8.0
+six @ file:///tmp/build/80754af9/six_1623709665295/work
+sniffio==1.2.0
+soupsieve @ file:///tmp/build/80754af9/soupsieve_1616183228191/work
+sparsehash==0.4
+tensorboardX==2.4
+terminado==0.11.1
+terminaltables==3.1.10
+testpath==0.5.0
+threadpoolctl==2.2.0
+tifffile==2021.8.8
+tomlkit==0.7.2
+torch==1.6.0
+torchsparse==1.4.0
+torchvision==0.7.0
+tornado==6.1
+tqdm @ file:///tmp/build/80754af9/tqdm_1629302309755/work
+traitlets==5.0.5
+transforms3d==0.3.1
+trimesh==3.9.29
+typing-extensions==3.10.0.0
+urllib3 @ file:///tmp/build/80754af9/urllib3_1625084269274/work
+wcwidth==0.2.5
+webencodings==0.5.1
+websocket-client==1.2.1
+widgetsnbextension==3.5.1
+yacs==0.1.8
+yapf==0.31.0
+yarl==1.6.3
+zipp==3.5.0

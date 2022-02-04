@@ -134,7 +134,5 @@ logs
 .gitignore
 results
 .github
-tools/data_gen/tdmm/Data/*mat
-tools/data_gen/tdmm/Data/raw/*mat
-tools/data_gen/tdmm/Data/_test/*mat
-tools/data_gen/tdmm/Data/_test/pncc/*mat
+magicbox/face/BFM.mat
+magicbox/face/BFM_info.mat
