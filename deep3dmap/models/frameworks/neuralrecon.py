@@ -187,7 +187,6 @@ class NeuralRecon(BaseFramework):
 
         if save_mesh:
             self.save_mesh_scene(outputs, inputs)
-
         #weighted loss
         for i, (k, v) in enumerate(loss_dict.items()):
             loss_dict[k] = v * self.model_cfg.LW[i]

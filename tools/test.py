@@ -433,6 +433,5 @@ def main():
             if args.work_dir is not None and rank == 0:
                 deep3dmap.core.utils.dump(metric_dict, json_file)
 
-
 if __name__ == '__main__':
     main()

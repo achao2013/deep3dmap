@@ -188,6 +188,7 @@ class ScanNetDataset(Dataset):
                 mesh = trimesh.load(mesh_file, process=False)
             except:
                 return scene, None
+
             # mesh renderer
             renderer = Renderer()
             mesh_opengl = renderer.mesh_opengl(mesh)
