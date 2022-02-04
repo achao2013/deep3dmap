@@ -1,8 +1,12 @@
 ## Installation
 sudo apt install libsparsehash-dev  # you can try to install sparsehash with conda if you don't have sudo privileges.
+
 conda env create -f requirements/environment.yaml
+
 conda activate deep3dmap2
+
 pip install -r requirements/requirements.txt
+
 <details>
   <summary>[FAQ on installation]</summary>
 
