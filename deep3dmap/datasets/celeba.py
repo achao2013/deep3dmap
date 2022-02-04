@@ -1,3 +1,4 @@
+# Copyright (c) achao2013. All rights reserved.
 #!/usr/bin/env python
 # -*- coding=utf8 -*-
 """
@@ -105,7 +106,7 @@ class CelebaDataset(CustomDataset):
             if self.load_gt_depth:
                 self.depth_gt_all = []
             self.img_num = len(self.image_path)
-            assert self.collect_iters >= self.img_num
+            #assert self.collect_iters >= self.img_num
             print("Loading images...")
             for i in range(self.img_num):
                 image_path = self.image_path[i]
@@ -173,7 +174,7 @@ class CelebaDataset(CustomDataset):
             self.gt_depth_path=self.depth_list[idx:idx+self.world_size] if self.load_gt_depth else None
             self.w_path=self.latent_list[idx:idx+self.world_size]
         elif epoch is not None:
-            self.image_path=   self.img_list[epoch]
+            self.image_path = self.img_list[epoch]
             self.gt_depth_path=self.depth_list[epoch] if self.load_gt_depth else None
             self.w_path=self.latent_list[epoch]
         else:

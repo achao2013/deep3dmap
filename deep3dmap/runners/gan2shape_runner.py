@@ -77,16 +77,16 @@ class Gan2ShapeRunner(BaseRunner):
     def init_optimizers(self):
         self.optimizer_names = []
         if self.model.mode == 'step1':
-            optimize_names = ['netA']
+            optimize_names = ['albedo_head']
         elif self.model.mode == 'step2':
-            optimize_names = ['netEnc']
+            optimize_names = ['encoder_head']
         elif self.model.mode == 'step3':
             optimize_names = [name for name in self.model.network_names]
-            optimize_names.remove('netEnc')
+            optimize_names.remove('encoder_head')
 
         for net_name in optimize_names:
             optimizer = self.make_optimizer(getattr(self.model, net_name))
-            optim_name = net_name.replace('net', 'optimizer')
+            optim_name = net_name.replace('head', 'optimizer')
             setattr(self, optim_name, optimizer)
             self.optimizer_names += [optim_name]
 

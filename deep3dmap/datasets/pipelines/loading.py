@@ -3,6 +3,7 @@ import os.path as osp
 
 import deep3dmap
 import numpy as np
+import scipy.io as sio
 from deep3dmap.core.utils import fileio
 import pycocotools.mask as maskUtils
 
@@ -14,6 +15,178 @@ try:
 except ImportError:
     rgb2id = None
 
+
+@PIPELINES.register_module()
+class GetKeysFromDict:
+    """Default formatting bundle.
+
+    It simplifies the pipeline of formatting common fields, including "img",
+    "proposals", "gt_bboxes", "gt_labels", "gt_masks" and "gt_semantic_seg".
+    These fields are formatted as follows.
+
+    - img: (1)transpose, (2)to tensor, (3)to DataContainer (stack=True)
+    - gt_masks: (1)to tensor, (2)to DataContainer (cpu_only=True)
+    - gt_semantic_seg: (1)unsqueeze dim-0 (2)to tensor, \
+                       (3)to DataContainer (stack=True)
+    """
+    def __init__(self,
+                 in_dict_key=['mat'], out_keys=['pts3d']):
+        self.in_dict_key=in_dict_key
+        self.out_keys=out_keys
+    def __call__(self, results):
+        """Call function to transform and format common fields in results.
+
+        Args:
+            results (dict): Result dict contains the data to convert.
+
+        Returns:
+            dict: The result dict contains the data that is formatted with \
+                default bundle.
+        """
+        in_dict=results[self.in_dict_key]
+        for key in self.out_keys:
+            if key in in_dict:
+                results[key] = in_dict[key]
+        return results
+    def __repr__(self):
+        return self.__class__.__name__
+
+@PIPELINES.register_module()
+class LoadArrayUsingNp:
+    """Load an image from file.
+
+    Required keys are "img_prefix" and "img_info" (a dict that must contain the
+    key "filename"). Added or updated keys are "filename", "img", "img_shape",
+    "ori_shape" (same as `img_shape`), "pad_shape" (same as `img_shape`),
+    "scale_factor" (1.0) and "img_norm_cfg" (means=0 and stds=1).
+
+    Args:
+        to_float32 (bool): Whether to convert the loaded image to a float32
+            numpy array. If set to False, the loaded image is an uint8 array.
+            Defaults to False.
+        color_type (str): The flag argument for :func:`fileio.imfrombytes`.
+            Defaults to 'color'.
+        file_client_args (dict): Arguments to instantiate a FileClient.
+            See :class:`fileio.FileClient` for details.
+            Defaults to ``dict(backend='disk')``.
+    """
+
+    def __init__(self,
+                 out_key='arr',
+                 to_float32=False,
+                 color_type='color',
+                 file_client_args=dict(backend='disk')):
+        self.out_key=out_key
+        self.to_float32 = to_float32
+        self.color_type = color_type
+
+    def __call__(self, results):
+        """Call functions to load image and get image meta information.
+
+        Args:
+            results (dict): Result dict from :obj:`mmdet.CustomDataset`.
+
+        Returns:
+            dict: The dict contains loaded image and meta information.
+        """
+
+        #print('LoadArrayUsingNp results',results.keys())
+        if results['arr_prefix'] is not None:
+            filename = osp.join(results['arr_prefix'],
+                                results['arr_info']['filename'])
+        else:
+            filename = results['arr_info']['filename']
+
+        arr = np.load(filename)
+        
+        if self.to_float32:
+            arr = arr.astype(np.float32)
+        
+        results[self.out_key+'_filename'] = filename
+        results['ori_'+self.out_key+'_filename'] = results['arr_info']['filename']
+        results[self.out_key] = arr
+        results[self.out_key+'_shape'] = arr.shape
+        results['ori_'+self.out_key+'_shape'] = arr.shape
+        if self.out_key+'_fields' in results:
+            results[self.out_key+'_fields'].append(self.out_key)
+        else:
+            results[self.out_key+'_fields'] = [self.out_key]
+        return results
+
+    def __repr__(self):
+        repr_str = (f'{self.__class__.__name__}('
+                    f'to_float32={self.to_float32}, '
+                    f"out_key='{self.out_key}')")
+        return repr_str
+
+@PIPELINES.register_module()
+class LoadMatDictUsingSio:
+    """Load an  matrix with key:value from matlab file using scipy.io.
+
+    Required keys are "img_prefix" and "img_info" (a dict that must contain the
+    key "filename"). Added or updated keys are "filename", "img", "img_shape",
+    "ori_shape" (same as `img_shape`), "pad_shape" (same as `img_shape`),
+    "scale_factor" (1.0) and "img_norm_cfg" (means=0 and stds=1).
+
+    Args:
+        to_float32 (bool): Whether to convert the loaded image to a float32
+            numpy array. If set to False, the loaded image is an uint8 array.
+            Defaults to False.
+        color_type (str): The flag argument for :func:`fileio.imfrombytes`.
+            Defaults to 'color'.
+        file_client_args (dict): Arguments to instantiate a FileClient.
+            See :class:`fileio.FileClient` for details.
+            Defaults to ``dict(backend='disk')``.
+    """
+
+    def __init__(self,
+                 out_key='matdict',
+                 to_float32=False,
+                 color_type='color'):
+        self.out_key=out_key
+        self.to_float32 = to_float32
+        self.color_type = color_type
+
+    def __call__(self, results):
+        """Call functions to load image and get image meta information.
+
+        Args:
+            results (dict): Result dict from :obj:`mmdet.CustomDataset`.
+
+        Returns:
+            dict: The dict contains loaded image and meta information.
+        """
+
+
+        #here the name is related with pipeline module name
+        if results['mat_prefix'] is not None:
+            filename = osp.join(results['mat_prefix'],
+                                results['mat_info']['filename'])
+        else:
+            filename = results['mat_info']['filename']
+
+        mat = sio.loadmat(filename)
+        
+        #here the name is related with the output keys
+        results[self.out_key+'_filename'] = filename
+        results['ori_'+self.out_key+'_filename'] = results['mat_info']['filename']
+        
+            
+        
+        results[self.out_key] = mat
+
+        if self.out_key+'_fields' in results:
+            results[self.out_key+'_fields'].append(self.out_key)
+        else:
+            results[self.out_key+'_fields']=[self.out_key]
+        
+        return results
+
+    def __repr__(self):
+        repr_str = (f'{self.__class__.__name__}('
+                    f'to_float32={self.to_float32}, '
+                    f"out_key='{self.out_key}')")
+        return repr_str
 
 @PIPELINES.register_module()
 class LoadImageFromFile:
@@ -36,9 +209,11 @@ class LoadImageFromFile:
     """
 
     def __init__(self,
+                 out_key='img',
                  to_float32=False,
                  color_type='color',
                  file_client_args=dict(backend='disk')):
+        self.out_key=out_key
         self.to_float32 = to_float32
         self.color_type = color_type
         self.file_client_args = file_client_args.copy()
@@ -67,19 +242,25 @@ class LoadImageFromFile:
         img = fileio.imfrombytes(img_bytes, flag=self.color_type)
         if self.to_float32:
             img = img.astype(np.float32)
-
-        results['filename'] = filename
-        results['ori_filename'] = results['img_info']['filename']
-        results['img'] = img
-        results['img_shape'] = img.shape
-        results['ori_shape'] = img.shape
-        results['img_fields'] = ['img']
+        
+        
+        results[self.out_key+'_filename'] = filename
+        results['ori_'+self.out_key+'_filename'] = results['img_info']['filename']
+        results[self.out_key] = img
+        results[self.out_key+'_shape'] = img.shape
+        results['ori_'+self.out_key+'_shape'] = img.shape
+        if self.out_key+'_fields' in results:
+            results[self.out_key+'_fields'].append(self.out_key)
+        else:
+            results[self.out_key+'_fields'] = [self.out_key]
+        
         return results
 
     def __repr__(self):
         repr_str = (f'{self.__class__.__name__}('
                     f'to_float32={self.to_float32}, '
                     f"color_type='{self.color_type}', "
+                    f"out_key='{self.out_key}', "
                     f'file_client_args={self.file_client_args})')
         return repr_str
 

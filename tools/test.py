@@ -21,25 +21,33 @@ import pickle
 import shutil
 import tempfile
 import time
+import json
 
 import torch.distributed as dist
 from deep3dmap.core.utils import tensor2imgs
 
-from deep3dmap.core import encode_mask_results
+
 
 
 def single_gpu_test(model,
                     data_loader,
                     show=False,
+                    with_loss=False,
                     out_dir=None,
                     show_score_thr=0.3):
     model.eval()
     results = []
     dataset = data_loader.dataset
     prog_bar = deep3dmap.core.utils.ProgressBar(len(dataset))
+    batch_len=len(data_loader)
     for i, data in enumerate(data_loader):
+        data['batch_idx']=i
+        data['batch_len']=batch_len
         with torch.no_grad():
-            result = model(return_loss=False, rescale=True, **data)
+            if with_loss:
+                result = model(data, return_loss=True, rescale=True)
+            else:
+                result = model(data, return_loss=False, rescale=True)
 
         batch_size = len(result)
         if show or out_dir:
@@ -70,10 +78,7 @@ def single_gpu_test(model,
                     out_file=out_file,
                     score_thr=show_score_thr)
 
-        # encode mask results
-        if isinstance(result[0], tuple):
-            result = [(bbox_results, encode_mask_results(mask_results))
-                      for bbox_results, mask_results in result]
+
         results.extend(result)
 
         for _ in range(batch_size):
@@ -81,7 +86,7 @@ def single_gpu_test(model,
     return results
 
 
-def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
+def multi_gpu_test(model, data_loader, with_loss=False, tmpdir=None, gpu_collect=False):
     """Test model with multiple gpus.
 
     This method tests model with multiple gpus and collects the results
@@ -107,13 +112,15 @@ def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
     if rank == 0:
         prog_bar = deep3dmap.core.utils.progressbar.ProgressBar(len(dataset))
     time.sleep(2)  # This line can prevent deadlock problem in some cases.
+    batch_len=len(data_loader)//world_size
     for i, data in enumerate(data_loader):
+        data['batch_idx']=i
+        data['batch_len']=batch_len
         with torch.no_grad():
-            result = model(return_loss=False, rescale=True, **data)
-            # encode mask results
-            if isinstance(result[0], tuple):
-                result = [(bbox_results, encode_mask_results(mask_results))
-                          for bbox_results, mask_results in result]
+            if with_loss:
+                result = model(data,return_loss=True, rescale=True)
+            else:
+                result = model(data,return_loss=False, rescale=True)
         results.extend(result)
 
         if rank == 0:
@@ -244,6 +251,10 @@ def parse_args():
         action='store_true',
         help='whether to use gpu to collect results.')
     parser.add_argument(
+        '--with_loss',
+        action='store_true',
+        help='whether to output loss in test stage.')
+    parser.add_argument(
         '--tmpdir',
         help='tmp directory used for collecting results from multiple '
         'workers, available when gpu-collect is not specified')
@@ -371,8 +382,10 @@ def main():
     # build the model and load checkpoint
     cfg.model.train_cfg = None
     model = build_reconstruction(cfg.model, test_cfg=cfg.get('test_cfg'))
- 
-    checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
+    if cfg.model.get('test_cfg',None) and cfg.model.test_cfg.get('diy_load_checkpoint',False):
+        checkpoint=model.load_checkpoint(args.checkpoint)
+    else:
+        checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
     if args.fuse_conv_bn:
         model = fuse_conv_bn(model)
     # old versions did not save class info in checkpoints, this walkaround is
@@ -384,15 +397,16 @@ def main():
 
     if not distributed:
         model = MMDataParallel(model, device_ids=[0])
-        outputs = single_gpu_test(model, data_loader, args.show, args.show_dir,
+        outputs = single_gpu_test(model, data_loader, args.show, args.with_loss, args.show_dir,
                                   args.show_score_thr)
     else:
         model = MMDistributedDataParallel(
             model.cuda(),
             device_ids=[torch.cuda.current_device()],
             broadcast_buffers=False)
-        outputs = multi_gpu_test(model, data_loader, args.tmpdir,
+        outputs = multi_gpu_test(model, data_loader, args.with_loss, args.tmpdir,
                                  args.gpu_collect)
+        
 
     rank, _ = get_dist_info()
     if rank == 0:
@@ -412,8 +426,10 @@ def main():
                 eval_kwargs.pop(key, None)
             eval_kwargs.update(dict(metric=args.eval, **kwargs))
             metric = dataset.evaluate(outputs, **eval_kwargs)
-            print(metric)
+            
+            #print('test metric:',metric)
             metric_dict = dict(config=args.config, metric=metric)
+            
             if args.work_dir is not None and rank == 0:
                 deep3dmap.core.utils.dump(metric_dict, json_file)
 

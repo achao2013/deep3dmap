@@ -1,3 +1,4 @@
+# Copyright (c) achao2013. All rights reserved.
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer

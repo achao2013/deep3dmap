@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+#modified by achao2013
 import os.path as osp
 import platform
 import shutil
@@ -34,20 +35,20 @@ class EpochBasedRunner(BaseRunner):
         self.data_loaders = [None]
         self.optimizer = build_optimizer(model, runner_cfgs.optimizer)
 
-    def run_iter(self, data_batch, train_mode, **run_metas):
+    def run_iter(self, data_batch, train_mode, **kwargs):
         if train_mode:
             outputs = self.model.train_step(data_batch, self.optimizer,
-                                            **run_metas)
+                                            **kwargs)
         else:
-            outputs = self.model.val_step(data_batch, self.optimizer, **run_metas)
+            outputs = self.model.val_step(data_batch, self.optimizer, **kwargs)
         if not isinstance(outputs, dict):
-            raise TypeError('"batch_processor()" or "model.train_step()"'
+            raise TypeError('"model.train_step()"'
                             'and "model.val_step()" must return a dict')
         if 'log_vars' in outputs:
             self.log_buffer.update(outputs['log_vars'], outputs['num_samples'])
         self.outputs = outputs
 
-    def train(self, data_loader, **run_metas):
+    def train(self, data_loader, **kwargs):
         self.model.train()
         self.mode = 'train'
         self.data_loader = data_loader
@@ -57,7 +58,8 @@ class EpochBasedRunner(BaseRunner):
         for i, data_batch in enumerate(self.data_loader):
             self._inner_iter = i
             self.call_hook('before_train_iter')
-            self.run_iter(data_batch, train_mode=True, **run_metas)
+            self.run_iter(data_batch, train_mode=True, **kwargs)
+            #print('after run_iter and before after_train_iter')
             self.call_hook('after_train_iter')
             self._iter += 1
 
@@ -65,7 +67,7 @@ class EpochBasedRunner(BaseRunner):
         self._epoch += 1
 
     @torch.no_grad()
-    def val(self, data_loader, **run_metas):
+    def val(self, data_loader, **kwargs):
         self.model.eval()
         self.mode = 'val'
         self.data_loader = data_loader
@@ -116,11 +118,8 @@ class EpochBasedRunner(BaseRunner):
         self.logger.info('workflow: %s, max: %d epochs', workflow,
                          self._max_epochs)
         self.call_hook('before_run')
-        run_metas={'cur_epoch':self.epoch}
-        if kwargs:
-            run_metas.update(kwargs)
+        
         while self.epoch < self._max_epochs:
-            run_metas['cur_epoch']=self.epoch
             for i, flow in enumerate(workflow):
                 mode, epochs = flow
                 if isinstance(mode, str):  # self.train()
@@ -137,7 +136,7 @@ class EpochBasedRunner(BaseRunner):
                 for _ in range(epochs):
                     if mode == 'train' and self.epoch >= self._max_epochs:
                         break
-                    epoch_runner(self.data_loaders[i], **run_metas)
+                    epoch_runner(self.data_loaders[i], **kwargs)
 
         time.sleep(1)  # wait for some hooks like loggers to finish
         self.call_hook('after_run')

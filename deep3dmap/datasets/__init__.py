@@ -4,6 +4,8 @@ from .builder import DATASETS, PIPELINES, build_dataloader, build_dataset
 from .custom import CustomDataset
 from .celeba import CelebaDataset
 from .scannet import ScanNetDataset
+from .threehundred_wlp import ThreeHundredWLPDataset
+from .AFLW2000 import AFLW2000Dataset
 from .dataset_wrappers import (ClassBalancedDataset, ConcatDataset,
                                MultiImageMixDataset, RepeatDataset)
 from .samplers import DistributedGroupSampler, DistributedSampler, GroupSampler
@@ -18,5 +20,6 @@ __all__ = [
     'DistributedSampler', 'build_dataloader', 'ConcatDataset', 'RepeatDataset',
     'ClassBalancedDataset', 'DATASETS', 'PIPELINES',
     'build_dataset', 'replace_ImageToTensor', 'get_loading_pipeline',
-    'NumClassCheckHook', 'MultiImageMixDataset', 'CelebaDataset', 'ScanNetDataset'
+    'NumClassCheckHook', 'MultiImageMixDataset', 'CelebaDataset', 'ScanNetDataset', 
+    'ThreeHundredWLPDataset', 'AFLW2000Dataset'
 ]

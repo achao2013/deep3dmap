@@ -73,7 +73,7 @@ def train_reconstruction(model,
             seed=cfg.seed) for ds in datasets
         ]
 
-    if cfg.model.type not in ['Gan2Shape']:
+    if not ('inner_parallel' in cfg.model.model_cfgs and cfg.model.model_cfgs.inner_parallel):
         # put model on gpus
         if distributed:
             find_unused_parameters = cfg.get('find_unused_parameters', False)
@@ -89,8 +89,6 @@ def train_reconstruction(model,
                 model.cuda(cfg.gpu_ids[0]), device_ids=cfg.gpu_ids)
 
     # build runner
-    
-
     if 'runner' not in cfg:
         cfg.runner = {
             'type': 'EpochBasedRunner',
@@ -327,7 +325,7 @@ def main():
     datasets = [build_dataset(cfg.data.train)]
     if len(cfg.workflow) == 2:
         val_dataset = copy.deepcopy(cfg.data.val)
-        val_dataset.pipeline = cfg.data.train.pipeline
+        val_dataset.pipeline = cfg.data.val.pipeline
         datasets.append(build_dataset(val_dataset))
     if cfg.checkpoint_config is not None:
         # save mmdet version, config file content and class names in

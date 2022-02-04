@@ -1,3 +1,5 @@
+# Copyright (c) achao2013. All rights reserved.
+from inspect import Attribute
 import os
 import torch
 import trimesh
@@ -6,7 +8,7 @@ import torchvision.utils as vutils
 from skimage import measure
 from loguru import logger
 from deep3dmap.core.visualize.visualize import Visualizer
-from deep3dmap.parallel.data_container import DataContainer
+
 import cv2
 
 
@@ -27,55 +29,6 @@ def make_nograd_func(func):
 
     return wrapper
 
-
-# convert a function into recursive style to handle nested dict/list/tuple variables
-def make_recursive_func(func):
-    def wrapper(vars):
-        if isinstance(vars, list):
-            return [wrapper(x) for x in vars]
-        elif isinstance(vars, tuple):
-            return tuple([wrapper(x) for x in vars])
-        elif isinstance(vars, dict):
-            return {k: wrapper(v) for k, v in vars.items()}
-        else:
-            return func(vars)
-
-    return wrapper
-
-
-@make_recursive_func
-def tensor2float(vars):
-    if isinstance(vars, float):
-        return vars
-    elif isinstance(vars, torch.Tensor):
-        if len(vars.shape) == 0:
-            return vars.data.item()
-        else:
-            return [v.data.item() for v in vars]
-    else:
-        raise NotImplementedError("invalid input type {} for tensor2float".format(type(vars)))
-
-
-@make_recursive_func
-def tensor2numpy(vars):
-    if isinstance(vars, np.ndarray):
-        return vars
-    elif isinstance(vars, torch.Tensor):
-        return vars.detach().cpu().numpy().copy()
-    else:
-        raise NotImplementedError("invalid input type {} for tensor2numpy".format(type(vars)))
-
-
-@make_recursive_func
-def tocuda(vars):
-    if isinstance(vars, torch.Tensor):
-        return vars.cuda()
-    elif isinstance(vars, DataContainer):
-        return DataContainer(tocuda(vars.data))
-    elif isinstance(vars, str):
-        return vars
-    else:
-        raise NotImplementedError("invalid input type {} for tensor2numpy".format(type(vars)))
 
 
 def save_scalars(logger, mode, scalar_dict, global_step):
@@ -290,15 +243,15 @@ class SaveScene(object):
                 **data)
             mesh.export(os.path.join(save_path, '{}.ply'.format(self.scene_name)))
 
-    def __call__(self, outputs, inputs, epoch_idx):
+    def __call__(self, outputs, inputs):
         # no scene saved, skip
         if "scene_name" not in outputs.keys():
             return
-
+        
         batch_size = len(outputs['scene_name'])
         for i in range(batch_size):
             scene = outputs['scene_name'][i]
             self.scene_name = scene.replace('/', '-')
-
-            
+            #print('batch_size:',batch_size,' img_metas:',inputs['img_metas'])           
+            epoch_idx=inputs['img_metas'][i]['epoch'][0]
             self.save_scene_eval(epoch_idx, outputs, i)

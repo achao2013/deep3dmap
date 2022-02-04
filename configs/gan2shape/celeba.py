@@ -12,8 +12,12 @@ log_config = dict(
     ])
 resume_from = None
 load_from = None
+joint_train=False
 
 # model settings
+image_size=128
+gn_base = 8 if image_size >= 128 else 16
+nf = max(4096 // image_size, 16)
 model = dict(
     type='Gan2Shape',
     model_cfgs=dict(
@@ -22,6 +26,13 @@ model = dict(
         distributed=distributed,
         checkpoint_dir=work_dir,
         share_weight= False,  # true: share weight in distributed training
+        inner_parallel=True,
+        image_size=image_size,
+        depth_head=dict(type='EDDeconv', cin=3, cout=1, size=image_size, nf=nf, gn_base=gn_base, zdim=256, activation=None),
+        albedo_head=dict(type='EDDeconv', cin=3, cout=3, size=image_size, nf=nf, gn_base=gn_base, zdim=256),
+        view_head=dict(type='Encoder', cin=3, cout=6, size=image_size, nf=nf),
+        light_head=dict(type='Encoder', cin=3, cout=4, size=image_size, nf=nf),
+        encoder_head=dict(type='ResEncoder', cin=3, cout=512, size=image_size, nf=32, activation=None),
         flip1_cfg= [False, False, False, False],
         flip3_cfg= [True, False, False, False],
         relative_enc= True,  # true: use relative latent offset
@@ -73,6 +84,7 @@ data = dict(
             distributed=distributed,
             image_size= 128,
             load_gt_depth= False,
+            joint_train=joint_train,
             img_list_path= "data/celeba/list_200-399.txt",
             img_root= "data/celeba",
             latent_root= "data/celeba/latents",
@@ -98,7 +110,7 @@ runner = dict(
         keep_num_checkpoint= 1,
         use_logger= True,
         log_freq= 100,
-        joint_train= False,  # True: joint train on multiple images
+        joint_train= joint_train,  # True: joint train on multiple images
         independent= True,  # True: each process has a different input image
         reset_weight= True,  # True: reset model weights after each epoch
         save_results= True,

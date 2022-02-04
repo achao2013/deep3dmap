@@ -31,6 +31,7 @@ from .optimizer import (OPTIMIZER_BUILDERS, OPTIMIZERS,
                         build_optimizer_constructor)
 from .priority import Priority, get_priority
 from .utils import get_host_info, get_time_str, obj_from_dict, set_random_seed
+from .forward_engine import single_gpu_test, multi_gpu_test
 
 __all__ = [
     'BaseRunner', 'EpochBasedRunner', 'IterBasedRunner', 'LogBuffer',
@@ -48,5 +49,5 @@ __all__ = [
     'allreduce_params', 'CheckpointLoader', 'BaseModule',
     '_load_checkpoint_with_prefix', 'EvalHook', 'DistEvalHook', 'Sequential',
     'ModuleList', 'GradientCumulativeOptimizerHook',
-    'DefaultRunnerConstructor', 'Gan2ShapeRunner'
+    'DefaultRunnerConstructor', 'Gan2ShapeRunner', 'single_gpu_test', 'multi_gpu_test'
 ]

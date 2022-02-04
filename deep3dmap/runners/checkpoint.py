@@ -16,6 +16,7 @@ from torch.optim import Optimizer
 from torch.utils import model_zoo
 
 import deep3dmap
+import deep3dmap.core
 from ..core.utils.fileio import FileClient
 from ..core.utils.fileio import load as load_file
 from ..parallel import is_module_wrapper
@@ -148,16 +149,6 @@ def get_deprecated_model_names():
     return deprecate_urls
 
 
-def _process_mmcls_checkpoint(checkpoint):
-    state_dict = checkpoint['state_dict']
-    new_state_dict = OrderedDict()
-    for k, v in state_dict.items():
-        if k.startswith('backbone.'):
-            new_state_dict[k[9:]] = v
-    new_checkpoint = dict(state_dict=new_state_dict)
-
-    return new_checkpoint
-
 
 class CheckpointLoader:
     """A general checkpoint loader to manage all schemes."""
@@ -240,7 +231,7 @@ class CheckpointLoader:
 
         checkpoint_loader = cls._get_checkpoint_loader(filename)
         class_name = checkpoint_loader.__name__
-        deep3dmap.print_log(f'Use {class_name} loader', logger)
+        deep3dmap.core.utils.print_log(f'Use {class_name} loader', logger)
         return checkpoint_loader(filename, map_location)
 
 
@@ -371,64 +362,7 @@ def load_from_torchvision(filename, map_location=None):
     return load_from_http(model_urls[model_name], map_location=map_location)
 
 
-@CheckpointLoader.register_scheme(prefixes=('open-mmlab://', 'openmmlab://'))
-def load_from_openmmlab(filename, map_location=None):
-    """load checkpoint through the file path prefixed with open-mmlab or
-    openmmlab.
 
-    Args:
-        filename (str): checkpoint file path with open-mmlab or
-        openmmlab prefix
-        map_location (str, optional): Same as :func:`torch.load`.
-          Default: None
-
-    Returns:
-        dict or OrderedDict: The loaded checkpoint.
-    """
-
-    model_urls = get_external_models()
-    prefix_str = 'open-mmlab://'
-    if filename.startswith(prefix_str):
-        model_name = filename[13:]
-    else:
-        model_name = filename[12:]
-        prefix_str = 'openmmlab://'
-
-    deprecated_urls = get_deprecated_model_names()
-    if model_name in deprecated_urls:
-        warnings.warn(f'{prefix_str}{model_name} is deprecated in favor '
-                      f'of {prefix_str}{deprecated_urls[model_name]}')
-        model_name = deprecated_urls[model_name]
-    model_url = model_urls[model_name]
-    # check if is url
-    if model_url.startswith(('http://', 'https://')):
-        checkpoint = load_from_http(model_url, map_location=map_location)
-    else:
-        filename = osp.join(_get_deeprecon_home(), model_url)
-        if not osp.isfile(filename):
-            raise IOError(f'{filename} is not a checkpoint file')
-        checkpoint = torch.load(filename, map_location=map_location)
-    return checkpoint
-
-
-@CheckpointLoader.register_scheme(prefixes='mmcls://')
-def load_from_mmcls(filename, map_location=None):
-    """load checkpoint through the file path prefixed with mmcls.
-
-    Args:
-        filename (str): checkpoint file path with mmcls prefix
-        map_location (str, optional): Same as :func:`torch.load`.
-
-    Returns:
-        dict or OrderedDict: The loaded checkpoint.
-    """
-
-    model_urls = get_mmcls_models()
-    model_name = filename[8:]
-    checkpoint = load_from_http(
-        model_urls[model_name], map_location=map_location)
-    checkpoint = _process_mmcls_checkpoint(checkpoint)
-    return checkpoint
 
 
 def _load_checkpoint(filename, map_location=None, logger=None):

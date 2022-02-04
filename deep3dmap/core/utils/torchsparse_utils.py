@@ -1,3 +1,4 @@
+# Copyright (c) achao2013. All rights reserved.
 """
 Copied from:
 https://github.com/mit-han-lab/spvnas/blob/b24f50379ed888d3a0e784508a809d4e92e820c0/core/models/utils.py

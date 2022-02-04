@@ -29,6 +29,8 @@ from .weight_init import (INITIALIZERS, Caffe2XavierInit, ConstantInit,
                           bias_init_with_prob, caffe2_xavier_init,
                           constant_init, initialize, kaiming_init, normal_init,
                           trunc_normal_init, uniform_init, xavier_init)
+from .progressbar import (ProgressBar, track_iter_progress,
+                          track_parallel_progress, track_progress)
 from .fileio import *
 from .parrots_wrapper import (
         TORCH_VERSION, BuildExtension, CppExtension, CUDAExtension, DataLoader,
@@ -49,5 +51,6 @@ __all__ = [
         '_ConvNd', '_ConvTransposeMixin', '_InstanceNorm', '_MaxPoolNd',
         'get_build_config', 'BuildExtension', 'CppExtension', 'CUDAExtension',
         'DataLoader', 'PoolDataLoader', 'TORCH_VERSION','is_rocm_pytorch',
-        '_get_cuda_home'
+        '_get_cuda_home', 'ProgressBar',
+        'track_progress', 'track_iter_progress', 'track_parallel_progress',
         ]

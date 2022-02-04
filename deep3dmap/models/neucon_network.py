@@ -1,3 +1,4 @@
+# Copyright (c) achao2013. All rights reserved.
 import numpy as np
 import torch
 import torch.nn as nn
@@ -122,14 +123,14 @@ class NeuConNet(nn.Module):
             else:
                 # ----upsample coords----
                 up_feat, up_coords = self.upsample(pre_feat, pre_coords, interval)
-
+            
             # ----back project----
             feats = torch.stack([feat[scale] for feat in features])
             KRcam = inputs['proj_matrices'][:, :, scale].permute(1, 0, 2, 3).contiguous()
             volume, count = back_project(up_coords, inputs['vol_origin_partial'], self.model_cfgs.VOXEL_SIZE, feats,
                                          KRcam)
             grid_mask = count > 1
-
+            
             # ----concat feature from last stage----
             if i != 0:
                 feat = torch.cat([volume, up_feat], dim=1)
@@ -170,6 +171,7 @@ class NeuConNet(nn.Module):
                 loss = self.compute_loss(tsdf, occ, tsdf_target, occ_target,
                                          mask=grid_mask,
                                          pos_weight=self.model_cfgs.POS_WEIGHT)
+                
             else:
                 loss = torch.Tensor(np.array([0]))[0]
             loss_dict.update({f'tsdf_occ_loss_{i}': loss})
@@ -183,7 +185,7 @@ class NeuConNet(nn.Module):
             if num == 0:
                 logger.warning('no valid points: scale {}'.format(i))
                 return outputs, loss_dict
-
+            
             # ------avoid out of memory: sample points if num of points is too large-----
             if self.training and num > self.model_cfgs.TRAIN_NUM_SAMPLE[i] * bs:
                 choice = np.random.choice(num, num - self.model_cfgs.TRAIN_NUM_SAMPLE[i] * bs,
@@ -207,7 +209,7 @@ class NeuConNet(nn.Module):
             if i == self.model_cfgs.N_LAYER - 1:
                 outputs['coords'] = pre_coords
                 outputs['tsdf'] = pre_tsdf
-
+            
         return outputs, loss_dict
 
     @staticmethod
@@ -235,7 +237,7 @@ class NeuConNet(nn.Module):
             occ = occ[mask]
             tsdf_target = tsdf_target[mask]
             occ_target = occ_target[mask]
-
+        
         n_all = occ_target.shape[0]
         n_p = occ_target.sum()
         if n_p == 0:
@@ -254,4 +256,5 @@ class NeuConNet(nn.Module):
 
         # compute final loss
         loss = loss_weight[0] * occ_loss + loss_weight[1] * tsdf_loss
+        
         return loss

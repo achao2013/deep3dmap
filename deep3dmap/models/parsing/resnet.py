@@ -66,7 +66,7 @@ class Resnet18(nn.Module):
         self.layer2 = create_layer_basic(64, 128, bnum=2, stride=2)
         self.layer3 = create_layer_basic(128, 256, bnum=2, stride=2)
         self.layer4 = create_layer_basic(256, 512, bnum=2, stride=2)
-        self.init_weight()
+        #self.init_weight()
 
     def forward(self, x):
         x = self.conv1(x)

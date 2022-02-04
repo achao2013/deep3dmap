@@ -6,8 +6,10 @@ import warnings
 
 import cv2
 import deep3dmap
+import deep3dmap.core
 import numpy as np
 from numpy import random
+from skimage.transform import estimate_transform, warp
 
 from deep3dmap.core.utils.mask_structures import PolygonMasks
 from deep3dmap.core.evaluation.bbox_overlaps import bbox_overlaps
@@ -678,10 +680,11 @@ class Normalize:
             default is true.
     """
 
-    def __init__(self, mean, std, to_rgb=True):
+    def __init__(self, mean, std, keys=['img'], to_rgb=True):
         self.mean = np.array(mean, dtype=np.float32)
         self.std = np.array(std, dtype=np.float32)
         self.to_rgb = to_rgb
+        self.keys=keys
 
     def __call__(self, results):
         """Call function to normalize images.
@@ -693,17 +696,64 @@ class Normalize:
             dict: Normalized results, 'img_norm_cfg' key is added into
                 result dict.
         """
-        for key in results.get('img_fields', ['img']):
+        
+        for key in self.keys:
             results[key] = deep3dmap.core.utils.imnormalize(results[key], self.mean, self.std,
                                             self.to_rgb)
-        results['img_norm_cfg'] = dict(
-            mean=self.mean, std=self.std, to_rgb=self.to_rgb)
+            results[key+'_norm_cfg'] = dict(
+                mean=self.mean, std=self.std, to_rgb=self.to_rgb)
         return results
 
     def __repr__(self):
         repr_str = self.__class__.__name__
         repr_str += f'(mean={self.mean}, std={self.std}, to_rgb={self.to_rgb})'
         return repr_str
+
+@PIPELINES.register_module()
+class FaceLandmarkCrop:
+    def __init__(self, in_lm_key='pt3d_68', in_img_key='img', 
+                    out_lm_key='lm68', out_img_key='faceimg', out_trans_key='tform',
+                    resolution_inp=256, scale=1.5):
+        self.in_lm_key=in_lm_key
+        self.in_img_key=in_img_key
+        self.out_lm_key=out_lm_key
+        self.out_img_key=out_img_key
+        self.out_trans_key=out_trans_key
+        self.scale=scale
+        self.resolution_inp=resolution_inp
+        
+    def __call__(self, results):
+        kpt=results[self.in_lm_key]
+        kpt = kpt.astype(float)
+        if np.max(kpt.shape) > 4: # key points to get bounding box
+            kpt = kpt
+            if kpt.shape[0] > 3:
+                kpt = kpt.T
+            left = np.min(kpt[0, :]); right = np.max(kpt[0, :])
+            top = np.min(kpt[1,:]); bottom = np.max(kpt[1,:])
+        else:  # bounding box
+            bbox = kpt
+            left = bbox[0]; right = bbox[1]; top = bbox[2]; bottom = bbox[3]
+        old_size = (right - left + bottom - top)/2
+        center = np.array([right - (right - left) / 2.0, bottom - (bottom - top) / 2.0])
+        #size = int(old_size*1.6)
+        size = int(old_size*self.scale)
+        
+        src_pts = np.float32([[center[0]-size/2, center[1]-size/2], [center[0] - size/2, center[1]+size/2], [center[0]+size/2, center[1]-size/2]])
+        dst_pts = np.float32([[0,0], [0, self.resolution_inp - 1], [self.resolution_inp - 1, 0]])
+        tform = estimate_transform('similarity', src_pts, dst_pts)
+        results[self.out_trans_key]=tform.params
+
+        image = results[self.in_img_key][:,:,[2,1,0]]
+        cropped_image = warp(image, tform.inverse, output_shape=(self.resolution_inp, self.resolution_inp))
+        cropped_image = cropped_image[:,:,[2,1,0]]
+        results[self.out_img_key]=cropped_image
+        results[self.out_lm_key]=kpt[:2,:]
+        
+        return results
+
+
+        
 
 
 @PIPELINES.register_module()

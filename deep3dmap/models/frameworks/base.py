@@ -1,4 +1,4 @@
-# Copyright (c) JZC. All rights reserved.
+# Copyright (c) achao2013. All rights reserved.
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 
@@ -11,33 +11,34 @@ from deep3dmap.runners import BaseModule
 
 
 class BaseFramework(BaseModule, metaclass=ABCMeta):
-    """Base class for detectors."""
+    """Base class for reconstructors."""
 
     def __init__(self, init_cfg=None):
         super(BaseFramework, self).__init__(init_cfg)
         self.fp16_enabled = False
+        self.loss_reduce = True
 
     @property
     def with_neck(self):
-        """bool: whether the detector has a neck"""
+        """bool: whether the reconstructor has a neck"""
         return hasattr(self, 'neck') and self.neck is not None
 
     @property
     def with_light(self):
-        """bool: whether the detector has a bbox head"""
+        """bool: whether the reconstructor has a bbox head"""
         return (hasattr(self, 'light') and self.light is not None)
 
     @property
     def with_depth(self):
-        """bool: whether the detector has a bbox head"""
+        """bool: whether the reconstructor has a bbox head"""
         return (hasattr(self, 'depth') and self.depth is not None)
 
     @property
     def with_mask(self):
-        """bool: whether the detector has a mask head"""
+        """bool: whether the reconstructor has a mask head"""
         return (hasattr(self, 'mask_head') and self.mask_head is not None)
 
-    @abstractmethod
+    
     def extract_feat(self, imgs):
         """Extract features from images."""
         pass
@@ -55,7 +56,7 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
         assert isinstance(imgs, list)
         return [self.extract_feat(img) for img in imgs]
 
-    def forward_train(self, inputs, cur_epoch, **kwargs):
+    def forward_train(self, inputs, **kwargs):
         """
         Args:
             img (list[Tensor]): List of tensors of shape (1, C, H, W).
@@ -75,12 +76,12 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
     async def async_simple_test(self, img, img_metas, **kwargs):
         raise NotImplementedError
 
-    @abstractmethod
-    def simple_test(self, inputs, cur_epoch, **kwargs):
+    #@abstractmethod
+    def simple_test(self, inputs, **kwargs):
         pass
 
-    @abstractmethod
-    def aug_test(self, inputs, cur_epoch, **kwargs):
+    #@abstractmethod
+    def aug_test(self, inputs, **kwargs):
         """Test function with test time augmentation."""
         pass
 
@@ -102,7 +103,7 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
         else:
             raise NotImplementedError
 
-    def forward_test(self, inputs, cur_epoch, **kwargs):
+    def forward_test(self, inputs, **kwargs):
         """
         Args:
             imgs (List[Tensor]): the outer list indicates test-time
@@ -114,7 +115,7 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
         """
         pass
 
-    def forward(self, inputs, cur_epoch, return_loss=True, **kwargs):
+    def forward(self, inputs, return_loss=True, **kwargs):
         """Calls either :func:`forward_train` or :func:`forward_test` depending
         on whether ``return_loss`` is ``True``.
 
@@ -125,10 +126,10 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
         the outer list indicating test time augmentations.
         """
 
-        if return_loss:
-            return self.forward_train(inputs, cur_epoch, **kwargs)
+        if self.training:
+            return self.forward_train(inputs, **kwargs)
         else:
-            return self.forward_test(inputs, cur_epoch, **kwargs)
+            return self.forward_test(inputs, return_loss, **kwargs)
 
     def _parse_losses(self, losses):
         """Parse the raw outputs (losses) of the network.
@@ -151,21 +152,26 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
             else:
                 raise TypeError(
                     f'{loss_name} is not a tensor or list of tensors')
+            #print('in losses loss_name:',loss_name,'loss_value:',loss_value)
 
         loss = sum(_value for _key, _value in log_vars.items()
                    if 'loss' in _key)
-
+        #print('sumed loss:',loss)
         log_vars['loss'] = loss
+        
         for loss_name, loss_value in log_vars.items():
-            # reduce loss when distributed training
-            if dist.is_available() and dist.is_initialized():
-                loss_value = loss_value.data.clone()
-                dist.all_reduce(loss_value.div_(dist.get_world_size()))
+            if self.loss_reduce:
+                # reduce loss when distributed training
+                if dist.is_available() and dist.is_initialized():
+                    loss_value = loss_value.data.clone()
+                    #print('before all_reduce loss_name:',loss_name,'loss_value:',loss_value)
+                    dist.all_reduce(loss_value.div_(dist.get_world_size()))
             log_vars[loss_name] = loss_value.item()
-
+            
+        #print('log_vars:',log_vars)
         return loss, log_vars
 
-    def train_step(self, data, optimizer, cur_epoch):
+    def train_step(self, data, optimizer):
         """The iteration step during training.
 
         This method defines an iteration step during training, except for the
@@ -192,7 +198,7 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
                   DDP, it means the batch size on each GPU), which is used for
                   averaging the logs.
         """
-        losses = self(data,cur_epoch)
+        losses = self(data)
         loss, log_vars = self._parse_losses(losses)
 
         outputs = dict(
@@ -200,14 +206,14 @@ class BaseFramework(BaseModule, metaclass=ABCMeta):
 
         return outputs
 
-    def val_step(self, data, optimizer=None, cur_epoch=0):
+    def val_step(self, data, optimizer=None):
         """The iteration step during validation.
 
         This method shares the same signature as :func:`train_step`, but used
         during val epochs. Note that the evaluation after training epochs is
         not implemented with this method, but an evaluation hook.
         """
-        losses = self(data, cur_epoch)
+        losses = self(data)
         loss, log_vars = self._parse_losses(losses)
 
         outputs = dict(

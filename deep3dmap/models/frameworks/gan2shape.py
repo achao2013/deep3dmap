@@ -1,3 +1,4 @@
+# Copyright (c) achao2013. All rights reserved.
 import os
 import math
 from PIL import Image
@@ -7,24 +8,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.nn.parallel import DataParallel as DP
 import torch.distributed as dist
 import torchvision
 from torchvision import transforms
 
-from .. import networks
+from ..losses import perceptual_loss
 from deep3dmap.core.utils import utils
 from pnpmodules.stylegan2 import Generator, Discriminator, PerceptualLoss
 from deep3dmap.core.renderer.renderer import Renderer
-from deep3dmap.models.losses import DiscriminatorLoss
-from deep3dmap.parallel import MMDataParallel, MMDistributedDataParallel
-from ..builder import MODELS
-from deep3dmap.runners.base_module import BaseModule
+from deep3dmap.models.losses.discriminator_loss import DiscriminatorLoss
+from ..builder import MODELS, build_backbone
+from deep3dmap.models.frameworks.custom import CustomFramework
 
 def map_func(storage, location):
     return storage.cpu()
 
 @MODELS.register_module()
-class Gan2Shape():
+class Gan2Shape(CustomFramework):
     def __init__(self, model_cfgs, train_cfg=None, test_cfg=None):
         super(Gan2Shape, self).__init__()
         # basic parameters
@@ -78,14 +79,18 @@ class Gan2Shape():
         self.generator = Generator(self.gan_size, self.z_dim, 8, channel_multiplier=self.channel_multiplier)
         self.discriminator = Discriminator(self.gan_size, channel_multiplier=self.channel_multiplier)
 
-        gn_base = 8 if self.image_size >= 128 else 16
-        nf = max(4096 // self.image_size, 16)
-        self.netD = networks.EDDeconv(cin=3, cout=1, size=self.image_size, nf=nf, gn_base=gn_base, zdim=256, activation=None)
-        self.netA = networks.EDDeconv(cin=3, cout=3, size=self.image_size, nf=nf, gn_base=gn_base, zdim=256)
-        self.netV = networks.Encoder(cin=3, cout=6, size=self.image_size, nf=nf)
-        self.netL = networks.Encoder(cin=3, cout=4, size=self.image_size, nf=nf)
-        self.netEnc = networks.ResEncoder(3, 512, size=self.image_size, nf=32, activation=None)
-        self.network_names = [k for k in vars(self) if 'net' in k]
+        
+        if 'depth_head' in model_cfgs:
+            self.depth_head = build_backbone(model_cfgs.depth_head)
+        if 'albedo_head' in model_cfgs:
+            self.albedo_head = build_backbone(model_cfgs.albedo_head)
+        if 'view_head' in model_cfgs:
+            self.view_head = build_backbone(model_cfgs.view_head)
+        if 'light_head' in model_cfgs:
+            self.light_head = build_backbone(model_cfgs.light_head)
+        if 'encoder_head' in model_cfgs:
+            self.encoder_head = build_backbone(model_cfgs.encoder_head)
+        self.network_names = [k for k in vars(self) if 'head' in k]
 
 
         self.PerceptualLoss = PerceptualLoss(
@@ -137,13 +142,13 @@ class Gan2Shape():
                                             find_unused_parameters=find_unused_parameters))
                 else:
                     #model.cuda(cfg.gpu_ids[0])
-                    setattr(self, net_name, MMDataParallel(
+                    setattr(self, net_name, DP(
                         getattr(self, net_name), device_ids=model_cfgs.gpu_ids))
 
         self.need_ellipsoid_init = False
-        if ckpt is None or 'netD' not in self.ckpt.keys():
+        if ckpt is None or ('netD' not in self.ckpt.keys() and 'depth_head' not in self.ckpt.keys()):
             self.need_ellipsoid_init = True
-
+        
         if not hasattr(self, 'ckpt'):
             # copy model weights, used for reseting weights
             self.ckpt = deepcopy(self.get_model_state())
@@ -155,23 +160,28 @@ class Gan2Shape():
     def train(self):
         net_names = []
         if self.mode == 'step1':
-            net_names = ['netA']
+            net_names = ['albedo_head']
         elif self.mode == 'step2':
-            net_names = ['netEnc']
+            net_names = ['encoder_head']
         elif self.mode == 'step3':
             net_names = [name for name in self.network_names]
-            net_names.remove('netEnc')
+            net_names.remove('encoder_head')
 
         for net_name in net_names:
             net = getattr(self, net_name)
             net.train()
 
     def init_weights(self):
-        self.netA.init_weights()
-        self.netD.init_weights()
-        self.netL.init_weights()
-        self.netD.init_weights()
-        self.netEnc.init_weights()
+        if self.with_albedo:
+            self.albedo_head.init_weights()
+        if self.with_depth:
+            self.depth_head.init_weights()
+        if self.with_light:
+            self.light_head.init_weights()
+        if self.with_view:
+            self.view_head.init_weights()
+        if self.with_encoder:
+            self.encoder_head.init_weights()
 
     def reset_model_weight(self):
         self.load_model_state(self.ckpt)
@@ -185,7 +195,7 @@ class Gan2Shape():
         # prepare object mask, used for shape initialization and optionally remove the background
         self.prepare_mask(img_num, input_im, input_im_all)
         if self.need_ellipsoid_init:
-            self.init_netD_ellipsoid()
+            self.init_depth_head_ellipsoid()
             if not self.reset_weight:
                 self.need_ellipsoid_init = False
 
@@ -223,15 +233,15 @@ class Gan2Shape():
             if self.use_mask:
                 self.canon_mask = self.canon_mask_all[idx].cuda()
 
-    def init_netD_ellipsoid(self):
+    def init_depth_head_ellipsoid(self):
         ellipsoid = self.init_ellipsoid()
         net = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, self.netD.parameters()),
+            filter(lambda p: p.requires_grad, self.depth_head.parameters()),
             lr=0.0001, betas=(0.9, 0.999), weight_decay=5e-4)
 
         print("Initializing the depth net to output ellipsoid ...")
         for i in range(1000):
-            depth_raw = self.netD(self.input_im)
+            depth_raw = self.depth_head(self.input_im)
             depth = depth_raw - depth_raw.view(1,1,-1).mean(2).view(1,1,1,1)
             depth = depth.tanh()
             depth = self.depth_rescaler(depth)
@@ -410,7 +420,7 @@ class Gan2Shape():
         b = 1
         h, w = self.image_size, self.image_size
         ## predict depth
-        self.depth_raw = self.netD(dataset.input_im).squeeze(1)  # 1xHxW
+        self.depth_raw = self.depth_head(dataset.input_im).squeeze(1)  # 1xHxW
         self.depth = self.depth_raw - self.depth_raw.view(1,-1).mean(1).view(1,1,1)
         self.depth = self.depth.tanh()
         self.depth = self.depth_rescaler(self.depth)
@@ -423,7 +433,7 @@ class Gan2Shape():
             self.depth = torch.cat([self.depth, self.depth.flip(2)], 0)
 
         ## predict viewpoint transformation
-        self.view = self.netV(dataset.input_im)
+        self.view = self.view_head(dataset.input_im)
         if self.add_mean_V:
             self.view = self.view + self.view_mean.unsqueeze(0)
         if self.flip3 and self.mode == 'step3':
@@ -435,12 +445,12 @@ class Gan2Shape():
         self.renderer.set_transform_matrices(self.view_trans)
 
         ## predict albedo
-        self.albedo = self.netA(dataset.input_im)  # 1x3xHxW
+        self.albedo = self.albedo_head(dataset.input_im)  # 1x3xHxW
         if (self.flip3 and self.mode == 'step3') or self.flip1:
             self.albedo = torch.cat([self.albedo, self.albedo.flip(3)], 0)  # flip
 
         ## predict lighting
-        self.light = self.netL(dataset.input_im)  # Bx4
+        self.light = self.light_head(dataset.input_im)  # Bx4
         if self.add_mean_L:
             self.light = self.light + self.light_mean.unsqueeze(0)
         if (self.flip3 and self.mode == 'step3') or self.flip1:
@@ -520,6 +530,7 @@ class Gan2Shape():
             print("Collecting step 1 results ...")
         for i in range(self.img_num):
             self.next_image(dataset)
+            print('after next_image in step1_collect')
             with torch.no_grad():
                 self.forward_step1()
             self.depth_all.append(self.depth.cpu())
@@ -530,9 +541,9 @@ class Gan2Shape():
                 self.canon_mask_all.append(self.canon_mask.cpu())
 
     def latent_project(self, image, dataset):
-        offset = self.netEnc(image)
+        offset = self.encoder_head(image)
         if self.relative_enc:
-            offset = offset - self.netEnc(self.gan_im)
+            offset = offset - self.encoder_head(self.gan_im)
         hidden = offset + self.center_h
         offset = self.generator.style_forward(hidden, skip=8-self.F1_d) - self.center_w
         latent = dataset.latent_w + offset
@@ -614,7 +625,7 @@ class Gan2Shape():
         b, h, w = self.proj_im.size(0), self.image_size, self.image_size
 
         ## predict viewpoint transformation
-        view = self.netV(self.proj_im)
+        view = self.view_head(self.proj_im)
         if self.add_mean_V:
             view = view + self.view_mean.unsqueeze(0)
         view_trans = torch.cat([
@@ -627,7 +638,7 @@ class Gan2Shape():
         self.renderer.set_transform_matrices(view_trans)
 
         ## predict lighting
-        light = self.netL(self.proj_im)
+        light = self.light_head(self.proj_im)
         if self.add_mean_L:
             light = light + self.light_mean.unsqueeze(0)
         if self.flip3:

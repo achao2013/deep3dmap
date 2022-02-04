@@ -1,21 +1,4 @@
-# This file is derived from [Atlas](https://github.com/magicleap/Atlas).
-# Originating Author: Zak Murez (zak.murez.com)
-# Modified for [NeuralRecon](https://github.com/zju3dv/NeuralRecon) by Yiming Xie and Jiaming Sun.
-
-# Original header:
-# Copyright 2020 Magic Leap, Inc.
-
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-
-#     http://www.apache.org/licenses/LICENSE-2.0
-
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright 2022 achao2013.
 
 
 from PIL import Image, ImageOps
@@ -42,27 +25,41 @@ class Compose(object):
 @PIPELINES.register_module()
 class SeqToTensor(object):
     """ Convert to torch tensors"""
-
+    def __init__(self, imgslike_keys=['imgs'], common_keys=['extrinsics'], iter_keys=['tsdf_list_full']):
+        self.imgslike_keys=imgslike_keys
+        self.common_keys=common_keys
+        self.iter_keys=iter_keys
     def __call__(self, data):
-        data['imgs'] = torch.Tensor(np.stack(data['imgs']).transpose([0, 3, 1, 2]))
-        data['intrinsics'] = torch.Tensor(data['intrinsics'])
-        data['extrinsics'] = torch.Tensor(data['extrinsics'])
-        if 'depth' in data.keys():
-            data['depth'] = torch.Tensor(np.stack(data['depth']))
-        if 'tsdf_list_full' in data.keys():
-            for i in range(len(data['tsdf_list_full'])):
-                if not torch.is_tensor(data['tsdf_list_full'][i]):
-                    data['tsdf_list_full'][i] = torch.Tensor(data['tsdf_list_full'][i])
+        for key in self.imgslike_keys:
+            assert len(data[key])>=1
+            if data[key][0].ndim==3 and data[key][0].shape[2]>1:
+                data[key] = torch.Tensor(np.stack(data[key]).transpose([0, 3, 1, 2]))
+            else:
+                data[key] = torch.Tensor(np.stack(data[key]))
+        for key in self.common_keys:
+            data[key] = torch.Tensor(data[key])
+        
+        
+        for key in self.iter_keys:            
+            for i in range(len(data[key])):
+                if not torch.is_tensor(data[key][i]):
+                    data[key][i] = torch.Tensor(data[key][i])
         return data
 
 @PIPELINES.register_module()
 class SeqIntrinsicsPoseToProjection(object):
     """ Convert intrinsics and extrinsics matrices to a single projection matrix"""
 
-    def __init__(self, n_views, stride=1, scale=3):
+    def __init__(self, n_views, stride=1, scale=3, in_intrinsics_key='intrinsics', in_extrinsics_key='extrinsics',
+                    out_world2camera_key='world_to_aligned_camera', out_matrix_key='proj_matrices'):
         self.nviews = n_views
         self.stride = stride
         self.scale = scale
+        self.in_intrinsics_key = in_intrinsics_key
+        self.in_extrinsics_key = in_extrinsics_key
+        self.out_world2camera_key = out_world2camera_key
+        self.out_matrix_key = out_matrix_key
+        
 
     def rotate_view_to_align_xyplane(self, Tr_camera_to_world):
         # world space normal [0, 0, 1]  camera space normal [0, -1, 0]
@@ -75,14 +72,14 @@ class SeqIntrinsicsPoseToProjection(object):
         return rotation_matrix
 
     def __call__(self, data):
-        middle_pose = data['extrinsics'][self.nviews // 2]
+        middle_pose = data[self.in_extrinsics_key][self.nviews // 2]
         rotation_matrix = self.rotate_view_to_align_xyplane(middle_pose)
         rotation_matrix4x4 = np.eye(4)
         rotation_matrix4x4[:3, :3] = rotation_matrix
-        data['world_to_aligned_camera'] = torch.from_numpy(rotation_matrix4x4).float() @ middle_pose.inverse()
+        data[self.out_world2camera_key] = torch.from_numpy(rotation_matrix4x4).float() @ middle_pose.inverse()
 
         proj_matrices = []
-        for intrinsics, extrinsics in zip(data['intrinsics'], data['extrinsics']):
+        for intrinsics, extrinsics in zip(data[self.in_intrinsics_key], data[self.in_extrinsics_key]):
             view_proj_matrics = []
             for i in range(self.scale):
                 # from (camera to world) to (world to camera)
@@ -93,9 +90,9 @@ class SeqIntrinsicsPoseToProjection(object):
                 view_proj_matrics.append(proj_mat)
             view_proj_matrics = torch.stack(view_proj_matrics)
             proj_matrices.append(view_proj_matrics)
-        data['proj_matrices'] = torch.stack(proj_matrices)
-        data.pop('intrinsics')
-        data.pop('extrinsics')
+        data[self.out_matrix_key] = torch.stack(proj_matrices)
+        data.pop(self.in_intrinsics_key)
+        data.pop(self.in_extrinsics_key)
         return data
 
 
@@ -111,26 +108,29 @@ def pad_scannet(img, intrinsics):
     return img, intrinsics
 
 @PIPELINES.register_module()
-class SeqResizeImage(object):
+class SeqResizeImage968x1296(object):
     """ Resize everything to given size.
 
     Intrinsics are assumed to refer to image prior to resize.
     After resize everything (ex: depth) should have the same intrinsics
     """
 
-    def __init__(self, size):
+    def __init__(self, size, imgs_key='imgs', intrinsics_key='intrinsics'):
         self.size = size
+        self.imgs_key=imgs_key
+        self.intrinsics_key=intrinsics_key
 
     def __call__(self, data):
-        for i, im in enumerate(data['imgs']):
-            im, intrinsics = pad_scannet(im, data['intrinsics'][i])
+        for i, im in enumerate(data[self.imgs_key]):
+            
+            im, intrinsics = pad_scannet(im, data[self.intrinsics_key][i])
             w, h = im.size
             im = im.resize(self.size, Image.BILINEAR)
             intrinsics[0, :] /= (w / self.size[0])
             intrinsics[1, :] /= (h / self.size[1])
 
-            data['imgs'][i] = np.array(im, dtype=np.float32)
-            data['intrinsics'][i] = intrinsics
+            data[self.imgs_key][i] = np.array(im, dtype=np.float32)
+            data[self.intrinsics_key][i] = intrinsics
 
         return data
 
@@ -161,10 +161,11 @@ class SeqNormalizeImages():
     detailed docstring.
     """
 
-    def __init__(self, mean, std, to_rgb=True):
+    def __init__(self, mean, std, keys=['imgs'], to_rgb=True):
         self.mean = to_tensor(np.array(mean, dtype=np.float32)).view(1, -1, 1, 1)
         self.std = to_tensor(np.array(std, dtype=np.float32)).view(1, -1, 1, 1)
         self.to_rgb = to_rgb
+        self.keys=keys
 
     def __call__(self, data):
         """Call function.
@@ -177,9 +178,10 @@ class SeqNormalizeImages():
             list[dict]: List of dict that contains normalized results,
             'img_norm_cfg' key is added into result dict.
         """
-        for i, im in enumerate(data['imgs']):
-            im=(im-self.mean.type_as(im))/self.std.type_as(im)
-            data['imgs'][i]=im
+        for key in self.keys:
+            for i, im in enumerate(data[key]):
+                im=(im-self.mean.type_as(im))/self.std.type_as(im)
+                data[key][i]=im
         return data
 
 @PIPELINES.register_module()
@@ -189,7 +191,10 @@ class SeqRandomTransformSpace(object):
     """
 
     def __init__(self, voxel_dim, voxel_size, random_rotation=True, random_translation=True,
-                 paddingXY=1.5, paddingZ=.25, origin=[0, 0, 0], max_epoch=999, max_depth=3.0):
+                 paddingXY=1.5, paddingZ=.25, origin=[0, 0, 0], max_epoch=999, max_depth=3.0,
+                 in_origin_key='vol_origin', in_epoch_key='epoch', in_tsdf_key='tsdf_list_full', 
+                 in_extrinsics_key='extrinsics', in_intrinsics_key='intrinsics', in_imgs_key='imgs', in_depth_key='depth', 
+                 out_origin_partial_key='vol_origin_partial', out_tsdf_key='tsdf_list', out_occ_key='occ_list'):
         """
         Args:
             voxel_dim: tuple of 3 ints (nx,ny,nz) specifying
@@ -203,6 +208,16 @@ class SeqRandomTransformSpace(object):
             max_epoch: maximum epoch
             max_depth: maximum depth
         """
+        self.in_origin_key=in_origin_key
+        self.in_epoch_key=in_epoch_key
+        self.in_tsdf_key=in_tsdf_key
+        self.in_extrinsics_key=in_extrinsics_key
+        self.in_intrinsics_key=in_intrinsics_key
+        self.in_imgs_key=in_imgs_key
+        self.in_depth_key=in_depth_key
+        self.out_origin_partial_key=out_origin_partial_key
+        self.out_tsdf_key=out_tsdf_key
+        self.out_occ_key=out_occ_key
 
         self.voxel_dim = voxel_dim
         self.origin = origin
@@ -219,13 +234,13 @@ class SeqRandomTransformSpace(object):
         self.random_t = torch.rand((max_epoch, 3))
 
     def __call__(self, data):
-        origin = torch.Tensor(data['vol_origin'])
+        origin = torch.Tensor(data[self.in_origin_key])
         if (not self.random_rotation) and (not self.random_translation):
             T = torch.eye(4)
         else:
             # construct rotaion matrix about z axis
             if self.random_rotation:
-                r = self.random_r[data['epoch'][0]] * 2 * np.pi
+                r = self.random_r[data[self.in_epoch_key][0]] * 2 * np.pi
             else:
                 r = 0
             # first construct it in 2d so we can rotate bounding corners in the plane
@@ -233,7 +248,7 @@ class SeqRandomTransformSpace(object):
                               [np.sin(r), np.cos(r)]], dtype=torch.float32)
 
             # get corners of bounding volume
-            voxel_dim_old = torch.tensor(data['tsdf_list_full'][0].shape) * self.voxel_size
+            voxel_dim_old = torch.tensor(data[self.in_tsdf_key][0].shape) * self.voxel_size
             xmin, ymin, zmin = origin
             xmax, ymax, zmax = origin + voxel_dim_old
 
@@ -252,12 +267,12 @@ class SeqRandomTransformSpace(object):
             zmax = zmax
 
             # randomly sample a crop
-            voxel_dim = list(data['tsdf_list_full'][0].shape)
+            voxel_dim = list(data[self.in_tsdf_key][0].shape)
             start = torch.Tensor([xmin, ymin, zmin]) - self.padding_start
             end = (-torch.Tensor(voxel_dim) * self.voxel_size +
                    torch.Tensor([xmax, ymax, zmax]) + self.padding_end)
             if self.random_translation:
-                t = self.random_t[data['epoch'][0]]
+                t = self.random_t[data[self.in_epoch_key][0]]
             else:
                 t = .5
             t = t * start + (1 - t) * end - origin
@@ -267,10 +282,10 @@ class SeqRandomTransformSpace(object):
             T[:2, :2] = R
             T[:3, 3] = -t
 
-        for i in range(len(data['extrinsics'])):
-            data['extrinsics'][i] = T @ data['extrinsics'][i]
+        for i in range(len(data[self.in_extrinsics_key])):
+            data[self.in_extrinsics_key][i] = T @ data[self.in_extrinsics_key][i]
 
-        data['vol_origin'] = torch.tensor(self.origin, dtype=torch.float, device=T.device)
+        data[self.in_origin_key] = torch.tensor(self.origin, dtype=torch.float, device=T.device)
 
         data = self.transform(data, T.inverse(), old_origin=origin)
 
@@ -299,10 +314,10 @@ class SeqRandomTransformSpace(object):
         bnds[:, 0] = np.inf
         bnds[:, 1] = -np.inf
 
-        for i in range(data['imgs'].shape[0]):
-            size = data['imgs'][i].shape[1:]
-            cam_intr = data['intrinsics'][i]
-            cam_pose = data['extrinsics'][i]
+        for i in range(data[self.in_imgs_key].shape[0]):
+            size = data[self.in_imgs_key][i].shape[1:]
+            cam_intr = data[self.in_intrinsics_key][i]
+            cam_pose = data[self.in_extrinsics_key][i]
             view_frust_pts = get_view_frustum(self.max_depth, size, cam_intr, cam_pose)
             bnds[:, 0] = torch.min(bnds[:, 0], torch.min(view_frust_pts, dim=1)[0])
             bnds[:, 1] = torch.max(bnds[:, 1], torch.max(view_frust_pts, dim=1)[0])
@@ -310,18 +325,18 @@ class SeqRandomTransformSpace(object):
         # -------adjust volume bounds-------
         num_layers = 3
         center = (torch.tensor(((bnds[0, 1] + bnds[0, 0]) / 2, (bnds[1, 1] + bnds[1, 0]) / 2, -0.2)) - data[
-            'vol_origin']) / self.voxel_size
+            self.in_origin_key]) / self.voxel_size
         center[:2] = torch.round(center[:2] / 2 ** num_layers) * 2 ** num_layers
         center[2] = torch.floor(center[2] / 2 ** num_layers) * 2 ** num_layers
         origin = torch.zeros_like(center)
         origin[:2] = center[:2] - torch.tensor(self.voxel_dim[:2]) // 2
         origin[2] = center[2]
-        vol_origin_partial = origin * self.voxel_size + data['vol_origin']
+        vol_origin_partial = origin * self.voxel_size + data[self.in_origin_key]
 
-        data['vol_origin_partial'] = vol_origin_partial
+        data[self.out_origin_partial_key] = vol_origin_partial
 
         # ------get partial tsdf and occupancy ground truth--------
-        if 'tsdf_list_full' in data.keys():
+        if self.in_tsdf_key in data.keys():
             # -------------grid coordinates------------------
             old_origin = old_origin.view(1, 3)
 
@@ -332,18 +347,18 @@ class SeqRandomTransformSpace(object):
             world = transform[:3, :] @ world
             coords = (world - old_origin.T) / self.voxel_size
 
-            data['tsdf_list'] = []
-            data['occ_list'] = []
+            data[self.out_tsdf_key] = []
+            data[self.out_occ_key] = []
 
-            for l, tsdf_s in enumerate(data['tsdf_list_full']):
+            for l, tsdf_s in enumerate(data[self.in_tsdf_key]):
                 # ------get partial tsdf and occ-------
                 vol_dim_s = torch.tensor(self.voxel_dim) // 2 ** l
                 tsdf_vol = TSDFVolumeTorch(vol_dim_s, vol_origin_partial,
                                            voxel_size=self.voxel_size * 2 ** l, margin=3)
-                for i in range(data['imgs'].shape[0]):
-                    depth_im = data['depth'][i]
-                    cam_intr = data['intrinsics'][i]
-                    cam_pose = data['extrinsics'][i]
+                for i in range(data[self.in_imgs_key].shape[0]):
+                    depth_im = data[self.in_depth_key][i]
+                    cam_intr = data[self.in_intrinsics_key][i]
+                    cam_pose = data[self.in_extrinsics_key][i]
 
                     tsdf_vol.integrate(depth_im, cam_intr, cam_pose, obs_weight=1.)
 
@@ -380,11 +395,11 @@ class SeqRandomTransformSpace(object):
                 mask = (coords_world_s.abs() >= 1).squeeze(0).any(3)
                 tsdf_vol[mask] = 1
 
-                data['tsdf_list'].append(tsdf_vol)
-                data['occ_list'].append(occ_vol)
-            data.pop('tsdf_list_full')
-            data.pop('depth')
-        data.pop('epoch')
+                data[self.out_tsdf_key].append(tsdf_vol)
+                data[self.out_occ_key].append(occ_vol)
+            data.pop(self.in_tsdf_key)
+            #data.pop(self.in_depth_key)
+        #data.pop('epoch')
         return data
 
     def __repr__(self):
