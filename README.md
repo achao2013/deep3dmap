@@ -47,8 +47,11 @@ This is an 3d reconstruction pipeline in deep learning for research use.
 
 # Installation
 
-Please refer to [get_started.md](docs/get_started.md) for installation.
+Please refer to [install.md](docs/install.md) for installation.
 
+# Getting Started
+
+Please see [get_started.md](docs/get_started.md) for the basic usage of deep3dmap.
 
 
 # License
