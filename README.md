@@ -71,3 +71,11 @@ This project is released under the [Apache 2.0 license](LICENSE).
 
 </details>
 
+<details open>
+<summary> reference code from [open repositories](docs/code_ref.md)</summary>
+
+- ** reorganize the origin code to formulate uniform structure **
+  
+- ** include multiple independent python api over c++ or cuda code **
+
+</details>
