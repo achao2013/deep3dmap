@@ -21,7 +21,7 @@ This is an 3d reconstruction pipeline in deep learning for research use.
 
 - **differential renderers**
 
-  The toolbox support different differential renderers include neural rerender, pyrender, pytorch3d, 
+  The toolbox support different differential renderers include neural rerender, pyrender, pytorch3d, toy render demo and so on.
 
 - **support varigrained reconstructon**
   
