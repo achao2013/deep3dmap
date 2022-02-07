@@ -60,8 +60,10 @@ This project is released under the [Apache 2.0 license](LICENSE).
 
 # reference
 
+Reference code from [open repositories](docs/code_ref.md).
+
 <details open>
-<summary>mmcv and mmdetection, the differences are as follows: </summary>
+<summary>mmcv and mmdetection framenwork, the differences are as follows: </summary>
 
 - **can use both dataset and dataloader to prepare input data**
   
@@ -72,7 +74,7 @@ This project is released under the [Apache 2.0 license](LICENSE).
 </details>
 
 <details open>
-<summary>reference code from [open repositories](docs/code_ref.md).</summary>
+<summary>open method from img(s) to 3d, the features are as follows.</summary>
 
 - **reorganize the origin code to formulate uniform structure**
   
