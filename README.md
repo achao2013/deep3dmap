@@ -47,8 +47,9 @@ This is an 3d reconstruction pipeline in deep learning for research use.
 
 If you want to take advantage of our pipeline and tools to develop your own method, you can see the instructions as follows:
 
-- **Framewotk design: inherit from BaseFramework when your method has an unified pipeline with other methods, inherit from CustomFramework when your method is complicated and very different with existing methods, or define yourself.**
-- **DataParallel use: when use CustomFramework, you may need to warp your model with parallel inside your gramework like gan2shape, and define your own runner like gan2shape_runner.**
+- **Framework design: inherit from BaseFramework when your method has an unified pipeline with other methods, inherit from CustomFramework when your method is complicated and very different with existing methods, or define yourself.**
+- **DataParallel warp: when use CustomFramework, you may need to warp your model with parallel inside your gramework like gan2shape**
+- **Runner design: when use CustomFramework, you may need to define your own runner like gan2shape_runner**
 
 # Installation
 
