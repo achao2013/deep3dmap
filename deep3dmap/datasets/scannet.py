@@ -17,7 +17,7 @@ import json
 import os
 
 import numpy as np
-from deep3dmap.core.renderer.rerender_opengl import Renderer
+from deep3dmap.core.renderer.rerender_pr import PyRenderer
 import trimesh
 
 from deep3dmap.core.evaluation.depth_eval import eval_depth
@@ -190,7 +190,7 @@ class ScanNetDataset(Dataset):
                 return scene, None
 
             # mesh renderer
-            renderer = Renderer()
+            renderer = PyRenderer()
             mesh_opengl = renderer.mesh_opengl(mesh)
 
             for i, (cam_pose, depth_trgt, _) in enumerate(dataloader):

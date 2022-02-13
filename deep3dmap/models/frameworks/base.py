@@ -9,7 +9,7 @@ import torch.distributed as dist
 from deep3dmap.runners import BaseModule
 
 
-
+#warp model with parallel out of the framework
 class BaseFramework(BaseModule, metaclass=ABCMeta):
     """Base class for reconstructors."""
 

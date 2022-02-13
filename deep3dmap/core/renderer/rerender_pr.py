@@ -1,7 +1,7 @@
 import pyrender
 import numpy as np
 
-class Renderer():
+class PyRenderer():
     """OpenGL mesh renderer
 
     Used to render depthmaps from a mesh for 2d evaluation

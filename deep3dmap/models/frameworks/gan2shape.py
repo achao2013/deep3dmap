@@ -11,12 +11,11 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.nn.parallel import DataParallel as DP
 import torch.distributed as dist
 import torchvision
-from torchvision import transforms
 
 from ..losses import perceptual_loss
 from deep3dmap.core.utils import utils
 from pnpmodules.stylegan2 import Generator, Discriminator, PerceptualLoss
-from deep3dmap.core.renderer.renderer import Renderer
+from deep3dmap.core.renderer.renderer_nr import NrRenderer
 from deep3dmap.models.losses.discriminator_loss import DiscriminatorLoss
 from ..builder import MODELS, build_backbone
 from deep3dmap.models.frameworks.custom import CustomFramework
@@ -97,7 +96,7 @@ class Gan2Shape(CustomFramework):
             model='net-lin', net='vgg', use_gpu=True, gpu_ids=[torch.device(self.rank)]
         )
         self.d_loss = DiscriminatorLoss(ftr_num=4)
-        self.renderer = Renderer(model_cfgs, self.image_size)
+        self.renderer = NrRenderer(model_cfgs, self.image_size)
 
         # depth rescaler: -1~1 -> min_deph~max_deph
         self.depth_rescaler = lambda d: (1+d)/2 *self.max_depth + (1-d)/2 *self.min_depth

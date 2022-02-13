@@ -8,7 +8,7 @@ import torch
 import torch.distributed as dist
 
 
-
+#warp model with parallel in the framework
 class CustomFramework(metaclass=ABCMeta):
     """Base class for reconstructors."""
 

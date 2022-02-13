@@ -9,7 +9,7 @@ from .utils import *
 EPS = 1e-7
 
 
-class Renderer():
+class NrRenderer():
     def __init__(self, cfgs, image_size):
         self.device = cfgs.get('device', 'cpu')
         self.image_size = image_size
