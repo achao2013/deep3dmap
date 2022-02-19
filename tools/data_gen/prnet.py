@@ -13,10 +13,10 @@ from time import time
 import argparse
 import ast
 
-import deep3dmap.core.renderer.demo_renderer as demo_renderer
-import deep3dmap.core.renderer.demo_renderer.geometry.camera as camera
-import deep3dmap.core.renderer.demo_renderer.mesh as mesh
-import deep3dmap.core.renderer.demo_renderer.mesh_cython as mesh_cython
+import deep3dmap.core.renderer.renderer_demo as renderer_demo
+import deep3dmap.core.renderer.renderer_demo.geometry.camera as camera
+import deep3dmap.core.renderer.renderer_demo.mesh as mesh
+import deep3dmap.core.renderer.renderer_demo.mesh_cython as mesh_cython
 
 end_list = np.array([17, 22, 27, 42, 48, 31, 36, 68], dtype = np.int32) - 1
 
@@ -29,19 +29,19 @@ class GeneratePos:
         self.resolution_inp = resolution_inp
         self.resolution = resolution
         # load model
-        self.model = demo_renderer.load_model(model_path)
+        self.model = renderer_demo.load_model(model_path)
         # model information
-        model_info = demo_renderer.load_model_info(model_info_path)
+        model_info = renderer_demo.load_model_info(model_info_path)
         uv_coords = model_info['uv_coords']
-        nver, ntri = demo_renderer.get_model_num(self.model)
+        nver, ntri = renderer_demo.get_model_num(self.model)
         projected_vertices = np.vstack((uv_coords*(self.resolution - 1), np.zeros((1, nver))))
         projected_vertices[1,:] = self.resolution - 1 - projected_vertices[1,:]
         self.uv_vertices = projected_vertices.copy()
 
-        self.triangles = demo_renderer.get_triangles(self.model)
-        # n_shape_para, n_exp_para = demo_renderer.get_para_num(model)
+        self.triangles = renderer_demo.get_triangles(self.model)
+        # n_shape_para, n_exp_para = renderer_demo.get_para_num(model)
         # n_tex_para = n_shape_para
-        self.kpt_ind = demo_renderer.get_kpt_ind(self.model)
+        self.kpt_ind = renderer_demo.get_kpt_ind(self.model)
 
     def detect_kpt(self, kpt):
         # kpt: 3x68

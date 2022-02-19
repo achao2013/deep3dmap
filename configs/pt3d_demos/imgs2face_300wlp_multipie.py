@@ -33,9 +33,9 @@ model = dict(
         view_head=dict(type='Encoder', cin=3, cout=6, size=image_size, nf=nf),
         light_head=dict(type='Encoder', cin=3, cout=4, size=image_size, nf=nf),
         encoder_head=dict(type='ResEncoder', cin=3, cout=512, size=image_size, nf=32, activation=None),
-        uvs_path="data/uvs.npy",
-        pretrain= "pre-model/gan2shape/celeba_pretrain.pth",
-        view_mvn_path= "pre-model/gan2shape/view_light/celeba_view_mvn.pth",
+        template_uvs_path="magicbox/face/diskmap/uvs.npy",
+        template_normal_path= "magicbox/face/diskmap/template_normal.obj",
+        model_param_path= "magicbox/face/diskmap/Model_Shape.mat",
         light_mvn_path= "pre-model/gan2shape/view_light/celeba_light_mvn.pth",
         ## GAN
         channel_multiplier= 1,
