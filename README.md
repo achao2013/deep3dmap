@@ -42,6 +42,7 @@ This is an 3d reconstruction pipeline in deep learning for research use.
 - [x] Multi-view face reconstruction example using pytorch3d.
 - [ ] GNeRF: GAN-based Neural Radiance Field without Posed Camera
 - [ ] GIRAFFE: Representing Scenes as Compositional Generative Neural Feature Fields
+- [ ] Pixel2Mesh: Generating 3D Mesh Models from Single RGB Images
 
 # add new method:
 
