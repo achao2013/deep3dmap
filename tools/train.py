@@ -322,7 +322,10 @@ def main():
         test_cfg=cfg.get('test_cfg'))
     model.init_weights()
 
-    datasets = [build_dataset(cfg.data.train)]
+    datasets = []
+    for data_cfg in cfg.data:
+        if 'train' in data_cfg:
+            datasets.append(build_dataset(data_cfg))
     if len(cfg.workflow) == 2:
         val_dataset = copy.deepcopy(cfg.data.val)
         val_dataset.pipeline = cfg.data.val.pipeline

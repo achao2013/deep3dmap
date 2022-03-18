@@ -19,7 +19,7 @@ from .utils import get_host_info
 
 @RUNNERS.register_module()
 class CustomRunner(BaseRunner):
-    """Epoch-based Runner.
+    """Custom Runner.
 
     This runner train models epoch by epoch.
     """
