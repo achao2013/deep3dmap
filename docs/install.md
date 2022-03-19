@@ -18,3 +18,12 @@ pip install -r requirements/requirements.txt
 
 - For other problems, you can also refer to the [FAQ](https://github.com/mit-han-lab/torchsparse/blob/master/docs/FAQ.md) in `torchsparse`.
 </details>
+
+If you want to use the cuda ops, you need to execute the build operation:
+```shell
+ export CUDA_HOME=$CUDA_PATH_V10_2
+ export PATH=$CUDA_HOME/bin:$PATH
+ export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+ export TORCH_CUDA_ARCH_LIST="3.5 3.7 5.0 5.2 6.0 6.1 7.0 7.5"
+ WITH_OPS=1 python setup.py build_ext
+```

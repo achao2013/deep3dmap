@@ -42,8 +42,15 @@ This is an 3d reconstruction pipeline in deep learning for research use.
 - [x] Multi-view face reconstruction example using pytorch3d.
 - [ ] GNeRF: GAN-based Neural Radiance Field without Posed Camera
 - [ ] GIRAFFE: Representing Scenes as Compositional Generative Neural Feature Fields
+- [ ] Pixel2Mesh: Generating 3D Mesh Models from Single RGB Images
 
+# add new method:
 
+If you want to take advantage of our pipeline and tools to develop your own method, you can see the instructions as follows:
+
+- **Framework design: inherit from BaseFramework when your method has an unified pipeline with other methods, inherit from CustomFramework when your method is complicated and very different with existing methods, or define yourself.**
+- **DataParallel warp: when use CustomFramework, you may need to warp your model with parallel inside your gramework like gan2shape**
+- **Runner design: when use CustomFramework, you may need to define your own runner like gan2shape_runner**
 
 # Installation
 
@@ -60,8 +67,10 @@ This project is released under the [Apache 2.0 license](LICENSE).
 
 # reference
 
+Reference code from [open repositories](docs/code_ref.md).
+
 <details open>
-<summary>mmcv and mmdetection, the differences are as follows: </summary>
+<summary>mmcv and mmdetection framenwork, the differences are as follows: </summary>
 
 - **can use both dataset and dataloader to prepare input data**
   
@@ -71,3 +80,11 @@ This project is released under the [Apache 2.0 license](LICENSE).
 
 </details>
 
+<details open>
+<summary>open method from img(s) to 3d, the features are as follows.</summary>
+
+- **reorganize the origin code to formulate uniform structure**
+  
+- **include multiple independent python api over c++ or cuda code**
+
+</details>
