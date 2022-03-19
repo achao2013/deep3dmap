@@ -18,3 +18,9 @@ pip install -r requirements/requirements.txt
 
 - For other problems, you can also refer to the [FAQ](https://github.com/mit-han-lab/torchsparse/blob/master/docs/FAQ.md) in `torchsparse`.
 </details>
+
+If you want to use the cuda ops, you need to execute the build operation:
+```shell
+ WITH_OPS=1
+ python setup.py build_ext
+```
