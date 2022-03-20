@@ -12,7 +12,7 @@ cd pnpmodules/stylegan2/stylegan2-pytorch/op
 python setup.py install
 ```
 
-### run
+### Run 
 **Example2**: training on Celeba images:
 ```sh
 sh scripts/gan2shape/run_celeba.sh configs/gan2shape/celeba.py GPU_NUMS
