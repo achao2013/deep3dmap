@@ -13,7 +13,7 @@ This is an 3d reconstruction pipeline in deep learning for research use.
 
 - **plug and play deep modules**
   
-  We plug and use some polular deep modules like stylegan2, 
+  We plug and use some polular deep modules like stylegan2, face-alignment and so on
 
 - **Support of multiple frameworks of 3d reconstruction from image or images**
 
