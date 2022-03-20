@@ -10,21 +10,21 @@ async-timeout==3.0.1
 attrs==21.2.0
 Babel==2.9.1
 backcall==0.2.0
-beautifulsoup4 @ file:///home/linux1/recipes/ci/beautifulsoup4_1610988766420/work
+beautifulsoup4==4.9.3
 bleach==4.0.0
 blessings==1.7
 brotlipy==0.7.0
 cached-property==1.5.2
 cachetools==4.2.2
 certifi==2021.5.30
-cffi @ file:///tmp/build/80754af9/cffi_1625814693446/work
-chardet @ file:///tmp/build/80754af9/chardet_1607706768982/work
+cffi==1.14.6
+chardet==4.0.0
 click==8.0.1
 colorama==0.4.4
 conda==4.10.3
 conda-build==3.21.4
-conda-package-handling @ file:///tmp/build/80754af9/conda-package-handling_1618262151086/work
-cryptography @ file:///tmp/build/80754af9/cryptography_1616769182610/work
+conda-package-handling==1.7.3
+cryptography==3.4.7
 cycler==0.10.0
 Cython==0.29.24
 debugpy==1.4.1
@@ -32,11 +32,11 @@ decorator==5.0.9
 defusedxml==0.7.1
 deprecation==2.1.0
 entrypoints==0.3
-filelock @ file:///home/linux1/recipes/ci/filelock_1610993975404/work
+filelock==3.0.12
 freetype-py==2.2.0
 future==0.18.2
 gdown==3.13.0
-glob2 @ file:///home/linux1/recipes/ci/glob2_1610991677669/work
+glob2==0.7
 google-api-core==1.31.2
 google-auth==1.35.0
 googleapis-common-protos==1.53.0
@@ -44,15 +44,15 @@ gpustat==0.6.0
 grpcio==1.39.0
 h5py==3.3.0
 hiredis==2.0.0
-idna @ file:///home/linux1/recipes/ci/idna_1610986105248/work
+idna==2.10
 imageio==2.9.0
 importlib-metadata==4.6.4
 ipykernel==6.2.0
-ipython==7.31.1
+ipython==7.26.0
 ipython-genutils==0.2.0
 ipywidgets==7.6.3
 jedi==0.18.0
-Jinja2 @ file:///tmp/build/80754af9/jinja2_1612213139570/work
+Jinja2==2.11.3
 joblib==1.0.1
 json5==0.9.6
 jsonschema==3.2.0
@@ -65,11 +65,11 @@ jupyterlab-pygments==0.1.2
 jupyterlab-server==2.7.1
 jupyterlab-widgets==1.0.0
 kiwisolver==1.3.1
-libarchive-c @ file:///tmp/build/80754af9/python-libarchive-c_1617780486945/work
+libarchive-c==2.9
 llvmlite==0.37.0
 loguru==0.5.3
 Mako==1.1.5
-MarkupSafe @ file:///tmp/build/80754af9/markupsafe_1621528142364/work
+MarkupSafe==2.0.1
 matplotlib==3.4.3
 matplotlib-inline==0.1.2
 mistune==0.8.4
@@ -100,48 +100,50 @@ pandocfilters==1.4.3
 parso==0.8.2
 pexpect==4.8.0
 pickleshare==0.7.5
-Pillow @ file:///tmp/build/80754af9/pillow_1625655818400/work
+Pillow==8.3.1
+pip==21.2.2
 pkginfo==1.7.1
 prometheus-client==0.11.0
 prompt-toolkit==3.0.20
 protobuf==3.17.3
-psutil @ file:///tmp/build/80754af9/psutil_1612298016854/work
+psutil==5.8.0
 ptyprocess==0.7.0
 py-spy==0.3.8
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycocotools==2.0.3
 pycosat==0.6.3
-pycparser @ file:///tmp/build/80754af9/pycparser_1594388511720/work
+pycparser==2.20
 pycuda==2021.1
 pydantic==1.8.2
 pyglet==1.5.19
 Pygments==2.10.0
-PyOpenGL @ file:///home/achao/3d/pyopengl
-pyOpenSSL @ file:///tmp/build/80754af9/pyopenssl_1608057966937/work
+PyOpenGL==3.1.0
+pyOpenSSL==20.0.1
 pyparsing==2.4.7
 pyrender==0.1.45
 pyrsistent==0.18.0
-PySocks @ file:///tmp/build/80754af9/pysocks_1594394576006/work
+PySocks==1.7.1
 python-dateutil==2.8.2
 pytools==2021.2.8
-pytz @ file:///tmp/build/80754af9/pytz_1612215392582/work
+pytz==2021.1
 PyWavelets==1.1.1
 PyYAML==5.4.1
 pyzmq==22.2.1
 ray==1.5.2
 redis==3.5.3
-requests @ file:///tmp/build/80754af9/requests_1608241421344/work
+requests==2.25.1
 requests-unixsocket==0.2.0
 rsa==4.7.2
-ruamel-yaml-conda @ file:///tmp/build/80754af9/ruamel_yaml_1616016701961/work
+ruamel-yaml-conda==0.15.100
 scikit-image==0.18.2
 scikit-learn==0.24.2
 scipy==1.7.1
 Send2Trash==1.8.0
-six @ file:///tmp/build/80754af9/six_1623709665295/work
+setuptools==52.0.0.post20210125
+six==1.16.0
 sniffio==1.2.0
-soupsieve @ file:///tmp/build/80754af9/soupsieve_1616183228191/work
+soupsieve==2.2.1
 sparsehash==0.4
 tensorboardX==2.4
 terminado==0.11.1
@@ -151,18 +153,18 @@ threadpoolctl==2.2.0
 tifffile==2021.8.8
 tomlkit==0.7.2
 torch==1.6.0
-torchsparse==1.4.0
 torchvision==0.7.0
 tornado==6.1
-tqdm @ file:///tmp/build/80754af9/tqdm_1629302309755/work
+tqdm==4.62.1
 traitlets==5.0.5
 transforms3d==0.3.1
 trimesh==3.9.29
 typing-extensions==3.10.0.0
-urllib3 @ file:///tmp/build/80754af9/urllib3_1625084269274/work
+urllib3==1.26.6
 wcwidth==0.2.5
 webencodings==0.5.1
 websocket-client==1.2.1
+wheel==0.37.0
 widgetsnbextension==3.5.1
 yacs==0.1.8
 yapf==0.31.0
