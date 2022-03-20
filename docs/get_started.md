@@ -1,5 +1,18 @@
 ## GAN2Shape
 
+### Data Preperation
+```sh
+scripts/gan2shape/download.sh
+```
+
+### Env Preperation
+**compile StyleGAN2**
+```sh
+cd pnpmodules/stylegan2/stylegan2-pytorch/op
+python setup.py install
+```
+
+### run
 **Example2**: training on Celeba images:
 ```sh
 sh scripts/gan2shape/run_celeba.sh configs/gan2shape/celeba.py GPU_NUMS
