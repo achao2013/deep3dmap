@@ -1,9 +1,21 @@
 ## Installation
 sudo apt install libsparsehash-dev  # you can try to install sparsehash with conda if you don't have sudo privileges.
 
+if your gcc version in your system >=7.2
+```sh
 conda env create -f requirements/environment.yaml
-
 conda activate deep3dmap2
+```
+else you need to install gcc first.
+```sh
+conda env create deep3dmap2
+conda activate deep3dmap2
+conda install -c moussi gcc_impl_linux-64
+conda install -c moussi gcc_linux-64
+conda install -c moussi gxx_impl_linux-64
+conda install -c moussi gxx_linux-64
+conda env update -f requirements/environment.yaml
+```
 
 pip install -r requirements/requirements.txt
 

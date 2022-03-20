@@ -16,7 +16,7 @@ blessings==1.7
 brotlipy==0.7.0
 cached-property==1.5.2
 cachetools==4.2.2
-certifi==2021.5.30
+certifi==2021.10.8
 cffi==1.14.6
 chardet==4.0.0
 click==8.0.1
@@ -35,6 +35,7 @@ entrypoints==0.3
 filelock==3.0.12
 freetype-py==2.2.0
 future==0.18.2
+fvcore==0.1.5.post20210915
 gdown==3.13.0
 glob2==0.7
 google-api-core==1.31.2
@@ -47,6 +48,7 @@ hiredis==2.0.0
 idna==2.10
 imageio==2.9.0
 importlib-metadata==4.6.4
+iopath==0.1.9
 ipykernel==6.2.0
 ipython==7.26.0
 ipython-genutils==0.2.0
@@ -103,6 +105,7 @@ pickleshare==0.7.5
 Pillow==8.3.1
 pip==21.2.2
 pkginfo==1.7.1
+portalocker==2.3.2
 prometheus-client==0.11.0
 prompt-toolkit==3.0.20
 protobuf==3.17.3
@@ -126,6 +129,7 @@ pyrsistent==0.18.0
 PySocks==1.7.1
 python-dateutil==2.8.2
 pytools==2021.2.8
+pytorch3d==0.6.1
 pytz==2021.1
 PyWavelets==1.1.1
 PyYAML==5.4.1
@@ -145,7 +149,9 @@ six==1.16.0
 sniffio==1.2.0
 soupsieve==2.2.1
 sparsehash==0.4
+tabulate==0.8.9
 tensorboardX==2.4
+termcolor==1.1.0
 terminado==0.11.1
 terminaltables==3.1.10
 testpath==0.5.0
@@ -153,6 +159,7 @@ threadpoolctl==2.2.0
 tifffile==2021.8.8
 tomlkit==0.7.2
 torch==1.6.0
+torchsparse==1.4.0
 torchvision==0.7.0
 tornado==6.1
 tqdm==4.62.1
