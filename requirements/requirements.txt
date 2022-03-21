@@ -50,7 +50,7 @@ imageio==2.9.0
 importlib-metadata==4.6.4
 iopath==0.1.9
 ipykernel==6.2.0
-ipython==7.26.0
+ipython==7.31.1
 ipython-genutils==0.2.0
 ipywidgets==7.6.3
 jedi==0.18.0
@@ -102,7 +102,7 @@ pandocfilters==1.4.3
 parso==0.8.2
 pexpect==4.8.0
 pickleshare==0.7.5
-Pillow==8.3.1
+Pillow==9.0.1
 pip==21.2.2
 pkginfo==1.7.1
 portalocker==2.3.2
