@@ -16,7 +16,7 @@ conda install -c moussi gxx_impl_linux-64
 conda install -c moussi gxx_linux-64
 conda env update -f requirements/environment.yaml
 ```
-note:pytorch is include in requirements/environment.yaml, you can take out it and install it by yourself, we recommend the version >=1.6, and you can choose other cuda version according to your machine.
+**note**:pytorch is include in requirements/environment.yaml, you can take out it and install it by yourself, we recommend the version >=1.6, and you can choose other cuda version according to your machine.
 
 pip install -r requirements/requirements.txt
 
