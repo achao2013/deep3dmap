@@ -2,6 +2,7 @@
 sudo apt install libsparsehash-dev  # you can try to install sparsehash with conda if you don't have sudo privileges.
 
 1.install enviroment.
+
 if your gcc version in your system >=7.2
 ```sh
 conda env create -f requirements/environment.yaml
@@ -20,6 +21,7 @@ conda env update -f requirements/environment.yaml
 **note**:pytorch is include in requirements/environment.yaml, you can take out it and install it by yourself, we recommend the version >=1.6, and you can choose other cuda version according to your machine.
 
 2.install python packages.
+
 pip install -r requirements/requirements.txt
 
 <details>
@@ -35,6 +37,7 @@ pip install -r requirements/requirements.txt
 </details>
 
 3.install cuda build operators.
+
 To use the cuda ops, you need to execute the build operation:
 ```shell
  export CUDA_HOME=$CUDA_PATH_V10_2
