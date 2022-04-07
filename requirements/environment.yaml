@@ -231,5 +231,4 @@ dependencies:
     - yapf==0.31.0
     - yarl==1.6.3
     - zipp==3.5.0
-prefix: /home/achao/miniconda3/envs/deep3dmap2
 
