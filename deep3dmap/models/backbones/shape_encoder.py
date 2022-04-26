@@ -27,9 +27,10 @@ def reset_params(net):
 
 @BACKBONES.register_module()
 class Shape3dmmEncoder(BaseModule):
-    def __init__(self, init_cfg=None, net_name="vgg"):
+    def __init__(self, init_cfg=None, net_name="Vgg"):
         super().__init__(init_cfg)
-        self.feat_net=build_backbone(net_name)
+        self.featChannel = 512
+        self.feat_net=build_backbone(dict(type=net_name))
         self.fc_3dmm = nn.Sequential(OrderedDict([
             ('fc1', nn.Linear(self.featChannel, 256*2)),
             ('relu1', nn.ReLU(True)),

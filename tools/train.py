@@ -325,7 +325,7 @@ def main():
     datasets = []
     for data_cfg in cfg.data:
         if 'train' in data_cfg:
-            datasets.append(build_dataset(data_cfg))
+            datasets.append(build_dataset(cfg.data[data_cfg]))
     if len(cfg.workflow) == 2:
         val_dataset = copy.deepcopy(cfg.data.val)
         val_dataset.pipeline = cfg.data.val.pipeline

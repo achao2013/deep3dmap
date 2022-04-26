@@ -6,13 +6,14 @@ import deep3dmap
 import numpy as np
 import torch
 import torch.distributed as dist
-
+from deep3dmap.runners import BaseModule
 
 #warp model with parallel in the framework
-class CustomFramework(metaclass=ABCMeta):
+class CustomFramework(BaseModule, metaclass=ABCMeta):
     """Base class for reconstructors."""
 
     def __init__(self, init_cfg=None):
+        super(CustomFramework, self).__init__()
         self.fp16_enabled = False
         self.loss_reduce = True
 

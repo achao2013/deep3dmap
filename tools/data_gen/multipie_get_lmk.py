@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import caffe
-from pnpmodules.face-alignment import face_alignment
+from pnpmodules.face_alignment import face_alignment
 import cv2
 import numpy as np
 #from python_wrapper import *

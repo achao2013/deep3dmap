@@ -62,7 +62,10 @@ class Hook:
         return (runner.iter + 1) % n == 0 if n > 0 else False
 
     def end_of_epoch(self, runner):
-        return runner.inner_iter + 1 == len(runner.data_loader)
+        if runner.data_loaders[0] is not None:
+            return runner.inner_iter + 1 == len(runner.data_loader)
+        else:
+            return runner.inner_iter + 1 == len(runner.dataset)
 
     def is_last_epoch(self, runner):
         return runner.epoch + 1 == runner._max_epochs

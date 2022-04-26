@@ -54,7 +54,7 @@ def read_obj(objpath):
 
 
 
-def get_batch_supervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, uvtex_width, uvtex_height, outsize, tuplesize, tuplenum, auxsize, batchsize,result,freearr,arrimage,arruvtex,arrgtobj, arrgtaux, is_train, seed):
+def get_batch_supervise(datadir,datainfo, imgdir, imgpath2auxinfo, fix_pose, maxnum,patchid, uvtex_width, uvtex_height, outsize, tuplesize, tuplenum, auxsize, batchsize,result,freearr,arrimage,arruvtex,arrgtobj, arrgtaux, is_train, seed):
     np.random.seed(seed)
     imagelist = []
     uvtexlist = []
@@ -74,9 +74,9 @@ def get_batch_supervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, uvt
         inimgs=[]
         gtaux = np.zeros((tuplesize,auxsize))
         pose2imgpaths = datainfo[uvtexname]
-        uvtex = cv2.imread(uvtexname)
+        uvtex = cv2.imread(os.path.join(datadir,uvtexname))
         if uvtex is None:
-            print('uvtex read failed', uvtexname)
+            print('uvtex read failed', os.path.join(datadir,uvtexname))
             continue
         else:
             uvtex = cv2.resize(uvtex,(uvtex_width, uvtex_height), interpolation=cv2.INTER_CUBIC)
@@ -91,11 +91,11 @@ def get_batch_supervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, uvt
                     if "05_1" not in pose2imgpaths or "08_0" not in pose2imgpaths or "19_0" not in pose2imgpaths:
                         continue
                     idx = np.random.randint(len(pose2imgpaths["05_1"]))
-                    inimgs.append(cv2.imread(pose2imgpaths["05_1"][idx]))
+                    inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths["05_1"][idx])))
                     idx = np.random.randint(len(pose2imgpaths["19_0"]))
-                    inimgs.append(cv2.imread(pose2imgpaths["19_0"][idx]))
+                    inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths["19_0"][idx])))
                     idx = np.random.randint(len(pose2imgpaths["08_0"]))
-                    inimgs.append(cv2.imread(pose2imgpaths["08_0"][idx]))
+                    inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths["08_0"][idx])))
 
                     auxinfo=imgpath2auxinfo[pose2imgpaths["05_1"][idx]]
                     if isinstance(auxinfo['lm68'], np.ndarray):
@@ -160,7 +160,7 @@ def get_batch_supervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, uvt
                             break
                     if resample:
                         continue
-                    inimgs.append(cv2.imread(pose2imgpaths["05_1"]))
+                    inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths["05_1"])))
                     left_pose = left_poses[np.random.randint(len(left_poses))] 
                     i=0
                     resample=False
@@ -172,7 +172,7 @@ def get_batch_supervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, uvt
                             break
                     if resample:
                         continue
-                    inimgs.append(cv2.imread(pose2imgpaths[left_pose]))
+                    inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths[left_pose])))
                     right_pose = right_poses[np.random.randint(len(right_poses))] 
                     i=0
                     resample=False
@@ -184,7 +184,7 @@ def get_batch_supervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, uvt
                             break
                     if resample:
                         continue
-                    inimgs.append(cv2.imread(pose2imgpaths[right_pose]))                   
+                    inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths[right_pose])))                   
                 elif tuplesize ==5:
                     pass
                 else:
@@ -192,7 +192,7 @@ def get_batch_supervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, uvt
                     exit(0)
 
             gtobj = None
-            gtobj = read_obj(uvtexname.replace('Completed_UV/good','3dmm_obj').replace('.png','.obj'))
+            gtobj = read_obj(os.path.join(datadir,uvtexname.replace('Completed_UV/good','3dmm_obj').replace('.png','.obj')))
             gtobj = np.array(gtobj)*100000
             if gtobj is None:
                 print('obj read failed', uvtexname.replace('Completed_UV/good','3dmm_obj').replace('.png','.obj'))
@@ -265,11 +265,13 @@ def get_batch_supervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, uvt
 
 @DATASETS.register_module()
 class FaceTexUVAsyncDataset(object):
-    def __init__(self,datafile, auxfile, state='sup', image_size=384,fix_pose=True, tuplesize=3, patchid=0,batchsize=1,
-                 nthread=4,maxnum=None, is_train=True):
+    CLASSES=('face')
+    def __init__(self,datadir, datafile,imgdir, auxfile, state='sup', image_size=384, texture_size=384,fix_pose=True, tuplesize=3, patchid=0,batchsize=1,
+                 nthread=2,maxnum=None, is_train=True):
         print((dt()), 'load data info...')
         datainfo = pickle.load(open(datafile,"rb"))
         imgpath2auxinfo = pickle.load(open(auxfile,"rb"))
+        self.length=len(datainfo.keys())
         print(dt(), 'load finished, %d uvs'%len(datainfo.keys()))
         self.state=state
         self.iter_size = 1+int(len(datainfo.keys())/batchsize)
@@ -299,10 +301,11 @@ class FaceTexUVAsyncDataset(object):
             self.freearr.put(i)
 
         for i in range(nthread):
-            p = Process(target=get_batch_supervise, args=(datainfo, imgpath2auxinfo, fix_pose, maxnum, patchid, uvtex_width,uvtex_height, imagesize, tuplesize,tuplenum,auxsize, batchsize,self.result,
+            p = Process(target=get_batch_supervise, args=(datadir,datainfo, imgdir,imgpath2auxinfo, fix_pose, maxnum, patchid, uvtex_width,uvtex_height, image_size, tuplesize,tuplenum,auxsize, batchsize,self.result,
                                                 self.freearr,self.arrimage,self.arruvtex,self.arrgtobj, self.arrgtaux, is_train, 123+i))
             p.start()
-
+    def __len__(self):
+        return self.length
     def get(self):
         index, imageshape,uvtexshape,gtobjshape,gtauxshape = self.result.get()
         imagesize = np.prod(imageshape)
@@ -344,7 +347,7 @@ def return_batchdata_unsupervise(result,imagelist,gtauxlist, freearr,nparrimage,
     del gtauxlist[:]
 
 
-def get_batch_unsupervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, uvtex_width, uvtex_height, outsize, tuplesize, tuplenum, batchsize,result,freearr,arrimage, arrgtaux, is_train, seed):
+def get_batch_unsupervise(datadir, datainfo, imgdir,imgpath2auxinfo, fix_pose, maxnum,patchid, uvtex_width, uvtex_height, outsize, tuplesize, tuplenum, batchsize,result,freearr,arrimage, arrgtaux, is_train, seed):
     np.random.seed(seed)
     imagelist = []
     gtauxlist = []
@@ -355,7 +358,7 @@ def get_batch_unsupervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, u
             maxnum = len(datainfo.keys())
         id = list(datainfo.keys())[np.random.randint(maxnum)]
         illum = list(datainfo[id].keys())[np.random.randint(len(datainfo[id].keys()))]
-        express = datainfo[id][illum].keys()[np.random.randint(len(datainfo[id][illum].keys()))]
+        express = list(datainfo[id][illum].keys())[np.random.randint(len(datainfo[id][illum].keys()))]
 
 
         inimgs=[]
@@ -367,11 +370,11 @@ def get_batch_unsupervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, u
                 if "05_1" not in pose2imgpaths or "08_0" not in pose2imgpaths or "19_0" not in pose2imgpaths:
                     continue
                 idx = np.random.randint(len(pose2imgpaths["05_1"]))
-                inimgs.append(cv2.imread(pose2imgpaths["05_1"][idx]))
+                inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths["05_1"][idx])))
                 idx = np.random.randint(len(pose2imgpaths["19_0"]))
-                inimgs.append(cv2.imread(pose2imgpaths["19_0"][idx]))
+                inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths["19_0"][idx])))
                 idx = np.random.randint(len(pose2imgpaths["08_0"]))
-                inimgs.append(cv2.imread(pose2imgpaths["08_0"][idx]))
+                inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths["08_0"][idx])))
 
                 auxinfo=imgpath2auxinfo[pose2imgpaths["05_1"][idx]]
                 if isinstance(auxinfo['lm68'], np.ndarray):
@@ -421,7 +424,7 @@ def get_batch_unsupervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, u
                         break
                 if resample:
                     continue
-                inimgs.append(cv2.imread(pose2imgpaths["05_1"]))
+                inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths["05_1"])))
                 left_pose = left_poses[np.random.randint(len(left_poses))] 
                 i=0
                 resample=False
@@ -433,7 +436,7 @@ def get_batch_unsupervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, u
                         break
                 if resample:
                     continue
-                inimgs.append(cv2.imread(pose2imgpaths[left_pose]))
+                inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths[left_pose])))
                 right_pose = right_poses[np.random.randint(len(right_poses))] 
                 i=0
                 resample=False
@@ -445,7 +448,7 @@ def get_batch_unsupervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, u
                         break
                 if resample:
                     continue
-                inimgs.append(cv2.imread(pose2imgpaths[right_pose]))                   
+                inimgs.append(cv2.imread(os.path.join(imgdir,pose2imgpaths[right_pose])))                   
             elif tuplesize ==5:
                 pass
             else:
@@ -507,15 +510,17 @@ def get_batch_unsupervise(datainfo, imgpath2auxinfo, fix_pose, maxnum,patchid, u
             imagelist.append(imgtuple)
             gtauxlist.append(gtaux)
         if len(imagelist)==batchsize: 
-            return_batchdata_supervise(result,imagelist,gtauxlist,freearr,nparrimage,nparrgtaux)
+            return_batchdata_unsupervise(result,imagelist,gtauxlist,freearr,nparrimage,nparrgtaux)
 
 @DATASETS.register_module()
 class FaceImagesAsyncDataset(object):
-    def __init__(self,datafile, auxfile, state='unsup', image_size=384, fix_pose=True, tuplesize=3, patchid=0,batchsize=1,
-                 nthread=12,maxnum=None, is_train=True):
+    CLASSES=('face')
+    def __init__(self,datadir, datafile, imgdir, auxfile, state='unsup', image_size=384, texture_size=384, fix_pose=True, tuplesize=3, patchid=0,batchsize=1,
+                 nthread=2,maxnum=1000, is_train=True):
         print((dt()), 'load data info...')
         datainfo = pickle.load(open(datafile,"rb"))
         imgpath2auxinfo = pickle.load(open(auxfile,"rb"))
+        self.length=len(datainfo.keys())
         print(dt(), 'load finished, %d ids'%len(datainfo.keys()))
         self.state=state
         self.iter_size = 1+int(len(datainfo.keys())/batchsize)
@@ -526,7 +531,7 @@ class FaceImagesAsyncDataset(object):
         uvtex_width = image_size #595
         uvtex_height = image_size #377
         pointsnum=53215
-        auxsize=149
+        auxsize=152
         self.arrimage = Array(ctypes.c_float, tuplenum*batchsize*tuplesize*3*image_size*image_size)
         self.arrgtaux = Array(ctypes.c_float, tuplenum*batchsize*tuplesize*auxsize)
         self.nparrimage = np.frombuffer(self.arrimage.get_obj(),np.float32).reshape(tuplenum,int(len(self.arrimage)/tuplenum))
@@ -539,10 +544,11 @@ class FaceImagesAsyncDataset(object):
             self.freearr.put(i)
 
         for i in range(nthread):
-            p = Process(target=get_batch_unsupervise, args=(datainfo, imgpath2auxinfo, fix_pose, maxnum, patchid, uvtex_width,uvtex_height, imagesize, tuplesize,tuplenum, batchsize,self.result,
+            p = Process(target=get_batch_unsupervise, args=(datadir, datainfo, imgdir, imgpath2auxinfo, fix_pose, maxnum, patchid, uvtex_width,uvtex_height, image_size, tuplesize,tuplenum, batchsize,self.result,
                                                 self.freearr,self.arrimage,self.arrgtaux, is_train, 123+i))
             p.start()
-
+    def __len__(self):
+        return self.length
     def get(self):
         index, imageshape,gtauxshape = self.result.get()
         imagesize = np.prod(imageshape)

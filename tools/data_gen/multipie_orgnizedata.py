@@ -1,10 +1,12 @@
 import pickle
 import torch
 import numpy as np
+import os, sys
+sys.path.append('.')
 from deep3dmap.core.all3dtrans.lmk2angle import draw_landmark,project_param
 from PIL import Image
 import scipy.io as sio
-from pnpmodules.face-alignment import face_alignment
+from pnpmodules.face_alignment import face_alignment
 
 def read_obj(objpath):
     v=[]
@@ -89,7 +91,7 @@ def split_data():
     outtrain1.close()
     outtest1.close()
 
-def package_data():
+def package_data(rootpath, infopath):
     traintxt="data/multipie/multipie_pyramidbox_face_400x400_casia_align_set1_train_label.txt"
     idillumexp2poseimgpaths = {}
     pose2cam = ['11_0','12_0','09_0','08_0','13_0','14_0','05_1','05_0', '04_1','19_0','20_0','01_0','24_0']
@@ -145,7 +147,6 @@ def package_data():
     torch.cuda.set_device(device)
 
     objtxt="data/multipie/multipie_3dmm_gtobj.txt"
-    model_shape = sio.loadmat('../Model_Shape.mat')
     name2objpath={}
     id2objpath={}
     with open(objtxt) as f:
@@ -159,7 +160,7 @@ def package_data():
             name2objpath[filename.split('.')[0]] = line.strip()
     #print(name2objpath)
     #print(id2objpath)
-    model_shape = sio.loadmat('../Model_Shape.mat')
+    model_shape = sio.loadmat('magicbox/face/Model_Shape.mat')
     traintxt="data/multipie/multipie_pyramidbox_face_400x400_casia_align_set1_train_label.txt"
     fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False)
     imgpath2auxinfo={}
@@ -172,24 +173,24 @@ def package_data():
             id = filename.split('_')[0]
             session = filename.split('_')[1]
             recordid = filename.split('_')[2]
-            pts = fa.get_landmarks(np.array(Image.open(linelist[0]).convert('RGB')))
+            pts = fa.get_landmarks(np.array(Image.open(os.path.join(rootpath,linelist[0])).convert('RGB')))
             if not pts:
                 imgpath2auxinfo[linelist[0]]={'lm68':-1, "s":-1, "R":-1, "t":-1}
                 print('lm68:',-1, " s:",-1, " R:",-1, " t:",-1)
             else:
                 lm2d68=pts[0]
                 if str(id+"_"+session+"_"+recordid) in name2objpath:
-                    shape=read_obj(name2objpath[id+"_"+session+"_"+recordid])
+                    shape=read_obj(os.path.join(infopath,name2objpath[id+"_"+session+"_"+recordid]))
                 else:
-                    shape=read_obj(id2objpath[id][np.random.randint(len(id2objpath[id]))])  
+                    shape=read_obj(os.path.join(infopath,id2objpath[id][np.random.randint(len(id2objpath[id]))]))  
                 shape=np.array(shape)
                 templete3d68=shape[model_shape['keypoints'][0].astype(np.int64),:]
                 s,R,t=project_param(lm2d68, templete3d68)
                 print('lm68:',lm2d68, " s:",s, " R:",R, " t:",t)
                 imgpath2auxinfo[linelist[0]]={'lm68':lm2d68, "s":s, "R":R, "t":t}
 
-    pickle.dump(imgpath2auxinfo,open("multipie_imgpath2auxinfo.pkl","wb"))
+    pickle.dump(imgpath2auxinfo,open("data/multipie/multipie_imgpath2auxinfo.pkl","wb"))
 
 if __name__ == "__main__":
-    split_data()
-    package_data()
+    #split_data()
+    package_data("/media/achao/storage_2tb/data", "/home/achao/3d/database")

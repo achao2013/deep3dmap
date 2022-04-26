@@ -26,18 +26,20 @@ model = dict(
         image_size=image_size,
         texture_size=image_size,
         template_uvs_path="magicbox/face/diskmap/uvs.npy",
-        template_normal_path= "magicbox/face/diskmap/template_normal.obj",
-        model_param_path= "magicbox/face/diskmap/Model_Shape.mat",
+        template_normal_path= "magicbox/face/template_normal.obj",
+        shape_param_path= "magicbox/face/Model_Shape.mat",
+        exp_param_path= "magicbox/face/Model_Expression.mat",
+        other_param_path="magicbox/face/sigma_exp.mat",
         tuplesize=3,
-        model_shape='Shape3dmmEncoder'
+        model_shape=dict(type='Shape3dmmEncoder')
     ))
 
 # dataset settings
-train_pipeline = []
+#train_pipeline = []
 test_pipeline = []
 use_data_loaders=False
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=2,
     workers_per_gpu=2,
     train_sup=dict(
             type='FaceTexUVAsyncDataset',
@@ -45,18 +47,20 @@ data = dict(
             tuplesize=3,
             image_size= image_size,
             texture_size=image_size,
+            datadir='/home/achao/3d/database',
+            imgdir='/media/achao/storage_5tb/data',
             datafile='data/multipie/multipie_uvtex2poseimgs.pkl',
-            auxfile='data/multipie/multipie_imgpath2auxinfo.pkl',
-            pipeline=train_pipeline),
+            auxfile='data/multipie/multipie_imgpath2auxinfo.pkl'),
     train_unsup=dict(
             type='FaceImagesAsyncDataset',
             state=state_seq[1],
             tuplesize=3,
             image_size= image_size,
             texture_size=image_size,
-            datafile='data/multipie/multipie_uvtex2poseimgs.pkl',
-            auxfile='data/multipie/multipie_imgpath2auxinfo.pkl',
-            pipeline=train_pipeline),
+            datadir='/home/achao/3d/database',
+            imgdir='/media/achao/storage_5tb/data',
+            datafile='data/multipie/multipie_idillumexp2poseimgpaths.pkl',
+            auxfile='data/multipie/multipie_imgpath2auxinfo.pkl'),
     val=dict(pipeline=test_pipeline))
 
 ##runner settings

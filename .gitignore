@@ -136,3 +136,6 @@ results
 .github
 magicbox/face/BFM.mat
 magicbox/face/BFM_info.mat
+magicbox/face/Model_Shape.mat
+magicbox/face/Model_Expression.mat
+magicbox/face/sigma_exp.mat

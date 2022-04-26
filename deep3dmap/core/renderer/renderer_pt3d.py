@@ -4,7 +4,8 @@ import numpy as np
 from pytorch3d.io import load_objs_as_meshes
 from pytorch3d.transforms import euler_angles_to_matrix, matrix_to_euler_angles,Rotate
 # Data structures and functions for rendering
-from pytorch3d.structures import Pointclouds, Meshes, Textures
+from pytorch3d.structures import Pointclouds, Meshes
+
 from pytorch3d.renderer import (
     look_at_view_transform,
     OpenGLPerspectiveCameras,
@@ -19,10 +20,13 @@ from pytorch3d.renderer import (
     PointsRenderer,
     MeshRasterizer,
     PointsRasterizer,
-    TexturedSoftPhongShader,
+    SoftPhongShader,
     NormWeightedCompositor,
     BlendParams,
-    AlphaCompositor
+    AlphaCompositor,
+    TexturesVertex,
+    TexturesUV,
+    TexturesAtlas
     )
 
 class Pt3dRenderer():
@@ -43,8 +47,8 @@ class Pt3dRenderer():
         #rot=Rotate(R, device=device)
         #normals_transformed = rot.transform_normals(normals.repeat(batchsize,1,1))
         batchsize=angles.shape[0]
-        vertexsize=normals.shape[1]
-        trisize=triangles.shape[1]
+        vertexsize=normals.shape[0]
+        trisize=triangles.shape[0]
         RR = euler_angles_to_matrix(angles, "XYZ")
         rot=Rotate(RR)
         normals_transformed = rot.transform_normals(normals)
@@ -52,31 +56,44 @@ class Pt3dRenderer():
         ver_visibility = torch.ones(batchsize,vertexsize).cuda()
         ver_visibility[coefs < 0] = 0
 
-        visible_veridx = (ver_visibility>0).nonzero()
-        tri_visibility = (triangles.reshape(batchsize,trisize,3,1) == visible_veridx.reshape(batchsize,1,1,vertexsize)).any(-1)
-        visible_triidx = (torch.sum(tri_visibility, 2)>0).nonzero()
-        used_faces = triangles[visible_triidx]
-        tex = Textures(verts_uvs=face_project, faces_uvs=used_faces, maps=imgs.permute(2,3,1))
+        used_faces=[]
+        for b in range(batchsize):
+            visible_veridx = (ver_visibility[b]<=0).nonzero().view(-1)
+            #print('triangles visible_veridx:',triangles.unsqueeze(-1).shape, unvisible_veridx.shape)
+            #part trinum x vertexnum for gpu memory
+            part_num=8
+            part_size=int(visible_veridx.shape[0]//part_num)
+            tri_visibility=(~(triangles.unsqueeze(-1) == visible_veridx[:part_size])).any(-1)
+            for j in range(1,part_num):
+                if j < part_num-1:
+                    tri_visibility |= (~(triangles.unsqueeze(-1) == visible_veridx[j*part_size:(j+1)*part_size])).any(-1)
+                else:
+                    tri_visibility |= (~(triangles.unsqueeze(-1) == visible_veridx[j*part_size:])).any(-1)
+            visible_triidx = (torch.sum(tri_visibility, 1)>0).nonzero().view(-1)
+            used_faces.append(triangles[visible_triidx])
+        used_faces
+        tex = TexturesUV(verts_uvs=face_project, faces_uvs=used_faces, maps=imgs.permute(0,2,3,1))
         mesh = Meshes(
-            verts=[template_uvs3d], faces=[used_faces], textures=tex)
+            verts=[template_uvs3d]*batchsize, faces=used_faces, textures=tex)
         R_, T_ = look_at_view_transform(2.7, torch.zeros(batchsize).cuda(), torch.zeros(batchsize).cuda())
-        camera = OpenGLOrthographicCameras(device=self.device, R=R_, T=T_)
+        camera = OpenGLOrthographicCameras(device=self.device, R=R_.float(), T=T_.float())
         #camera = OpenGLOrthographicCameras(R=R_, T=T_)
         renderer = MeshRenderer(
             rasterizer=MeshRasterizer(
             cameras=camera,
             raster_settings=self.raster_settings
                 ),
-            shader=TexturedSoftPhongShader(
+            shader=SoftPhongShader(
                 device=self.device,
                 cameras=camera,
                 blend_params=BlendParams(background_color=(0,0,0))
                 )
         )
+        
         uv_images = renderer(mesh)
-        mask = Textures(verts_uvs=face_project, faces_uvs=used_faces, maps=torch.ones_like(imgs.permute(2,3,1)))
+        mask = TexturesUV(verts_uvs=face_project, faces_uvs=used_faces, maps=torch.ones_like(imgs.permute(0,2,3,1)))
         mesh_mask = Meshes(
-            verts=[template_uvs3d], faces=[used_faces], textures=mask)
+            verts=[template_uvs3d]*batchsize, faces=used_faces, textures=mask)
         uv_mask = renderer(mesh_mask)
         return uv_images,uv_mask
         
