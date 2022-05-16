@@ -1,5 +1,5 @@
 #main
-work_dir="results/imgs2face_multipie"
+work_dir="results/gnerf_belender"
 distributed=True
 dist_params = dict(backend='nccl')
 checkpoint_config = dict(interval=1)
@@ -10,12 +10,10 @@ log_config = dict(
         dict(type='TextLoggerHook'),
         # dict(type='TensorboardLoggerHook')
     ])
-
 resume_from = None
-#resume_from = "results/imgs2face_multipie/epoch_16.pth"
 load_from = None
-joint_train=False
-state_seq = ['sup', 'unsup']
+
+state_seq = ['A', 'ABAB', 'B']
 image_size=256
 
 # model settings
@@ -67,7 +65,7 @@ data = dict(
 
 ##runner settings
 
-optimizer_config = dict(grad_clip=None)
+optimizer_config = dict(type='MultiOptimizerHook',grad_clip=None)
 lr_config = dict(
     policy='step',
     warmup='linear',
@@ -79,12 +77,13 @@ runner = dict(
     type='StateMachineRunner', 
     runner_cfgs=dict(
         distributed=distributed,
-        state_switch_mode='epoch_steps',
+        state_switch_mode='iter_steps',
         state_switch_method='once_inorder',
-        state_steps = dict(sup= 16,unsup= 32),
+        state_steps = dict(A= 12000,ABAB=20000),
         state_seq = state_seq,
-        optimizer = dict(type='Adam',
+        optimizer = [dict(type='Adam',
                     lr=0.0001, betas=(0.9, 0.999), weight_decay=5e-4),
+                    ],
         max_epochs=64))
 
 

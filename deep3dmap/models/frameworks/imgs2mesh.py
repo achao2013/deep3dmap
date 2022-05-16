@@ -14,7 +14,7 @@ import numpy as np
 import scipy.io as sio
 from ..builder import MODELS, build_backbone
 from collections import OrderedDict
-from deep3dmap.models.frameworks.custom import CustomFramework
+from deep3dmap.models.frameworks.base import BaseFramework
 from deep3dmap.datasets.pipelines.formating import to_tensor
 from deep3dmap.core.utils.device_transfer import to_cuda
 from deep3dmap.core.utils.fileio import read_obj
@@ -24,7 +24,7 @@ from deep3dmap.core.all3dmm.bfm_tools import param2points_bfm
 from pytorch3d.transforms import euler_angles_to_matrix, matrix_to_euler_angles,Rotate
 
 @MODELS.register_module()
-class imgs2mesh(CustomFramework):
+class imgs2mesh(BaseFramework):
     def __init__(self, model_cfgs, train_cfg=None, test_cfg=None):
         super(imgs2mesh, self).__init__()
         # basic parameters

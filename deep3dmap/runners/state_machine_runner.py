@@ -40,14 +40,47 @@ class StateMachineRunner(BaseRunner):
         self.data_loaders = [None]
         self.state_steps = runner_cfgs.get('state_steps', {'sup':16,'sup_unsup':32})
         self.state_seq = runner_cfgs.get('state_seq', ['sup', 'sup_unsup'])
-        self.state='sup'
+        self.state=self.state_seq[0]
         self.state_switch_mode = runner_cfgs.get('state_switch_mode', 'epoch_steps')
         self.state_switch_method = runner_cfgs.get('state_switch_method','once_inorder')
         self._max_epochs= runner_cfgs.get('max_epochs',32)
-        self.optimizer = build_optimizer(model, runner_cfgs.optimizer)
+        self.is_multi_opt_iters=False
+        #if we optimizer model components separately, we need an optimizer list 
+        if isinstance(runner_cfgs.optimizer,list):
+            self.init_optimizers(runner_cfgs.optimizer)
+            self.is_multi_opt_iters=len(runner_cfgs.optimizer)>1
+            self.cur_nets=[]
+            self.cur_optimizers=[]
+        else:
+            self.optimizer = build_optimizer(model, runner_cfgs.optimizer)
+    def net2opt_name(self, net_name):
+        if 'head' in net_name:
+            optim_name = net_name.replace('head', 'optimizer')
+        else:
+            optim_name = net_name+'_optimizer'
+        return optim_name
+    def init_optimizers(self, opt_cfgs):
+        self.optimizer_names = []
+        for i in range(len(opt_cfgs)):
+            net_name = self.model.network_names[i]
+            optim_name = self.net2opt_name(net_name)
+            optimizer = build_optimizer(getattr(self.model, net_name), opt_cfgs[i])
+
+            setattr(self, optim_name, optimizer)
+            self.optimizer_names += [optim_name]
     def state_switch(self):
         if self.state_switch_mode == 'epoch_steps':
             if self.epoch >= self.state_steps[self.state]:
+                if self.state_switch_method=='once_inorder':
+                    idx = self.state_seq.index(self.state)
+                    if idx<len(self.state_seq)-1:
+                        self.state=self.state_seq[idx+1]
+                elif self.state_switch_method=='loop_inorder':
+                    idx = self.state_seq.index(self.state)
+                    next_state = self.state_seq[(idx + 1) % len(self.state_seq)]
+                    self.state = next_state
+        elif self.state_switch_mode == 'iter_steps':
+            if self.iter >= self.state_steps[self.state]:
                 if self.state_switch_method=='once_inorder':
                     idx = self.state_seq.index(self.state)
                     if idx<len(self.state_seq)-1:
@@ -60,6 +93,30 @@ class StateMachineRunner(BaseRunner):
     def run_iter(self, data_batch, train_mode, **kwargs):
         if train_mode:
             outputs = self.model.train_step(data_batch, self.state, **kwargs)  
+        else:
+            outputs = self.model.val_step(data_batch, self.state, **kwargs)
+
+        if not isinstance(outputs, dict):
+            raise TypeError('"model.train_step()"'
+                            'and "model.val_step()" must return a dict')
+        if 'log_vars' in outputs:
+            self.log_buffer.update(outputs['log_vars'], outputs['num_samples'])
+        self.outputs = outputs
+    def setup_cur_nets_and_opts(self,cur_netnames):
+        self.cut_nets=[]
+        self.cur_optimizers=[]
+        for netname in cur_netnames:
+            self.cut_nets.append(self.model.name2net(netname))
+            self.cur_optimizers.append(getattr(self, self.net2opt_name(netname)))
+    def run_multi_iter(self, data_batch, train_mode, **kwargs):
+        if train_mode:
+            self.model.setup_optimize_sequences(self.state)
+            optimize_sequences=self.model.get_optimize_sequences()
+            for opt_seq in optimize_sequences:
+                cur_netnames=self.model.optseq2netnames(opt_seq)                
+                self.setup_cur_nets_and_opts(cur_netnames)
+                outputs = self.model.train_step(data_batch, self.state, opt_seq, **kwargs)
+                self.call_hook('after_train_iter')  
         else:
             outputs = self.model.val_step(data_batch, self.state, **kwargs)
 
@@ -86,9 +143,13 @@ class StateMachineRunner(BaseRunner):
             for i, data_batch in enumerate(self.data_loaders[state_idx]):
                 self._inner_iter = i
                 self.call_hook('before_train_iter')
-                self.run_iter(data_batch, train_mode=True, **kwargs)           
+                if self.is_multi_opt_iters:
+                    self.run_multi_iter(data_batch, train_mode=True, **kwargs)
+                else:
+                    self.run_iter(data_batch, train_mode=True, **kwargs)
+                    self.call_hook('after_train_iter')           
                 #print('after run_iter and before after_train_iter')
-                self.call_hook('after_train_iter')
+                
                 self._iter += 1
         else:
             for i in range(len(self.datasets)):

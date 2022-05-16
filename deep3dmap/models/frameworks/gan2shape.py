@@ -124,8 +124,8 @@ class Gan2Shape(CustomFramework):
         else:
             self.mean_latent = None
 
-        for k in self.network_names:
-            network = getattr(self, k)
+        for network_name in self.network_names:
+            network = getattr(self, network_name)
             network = network.cuda()
         
         self.find_unused_parameters=model_cfgs.get('find_unused_parameters', False)

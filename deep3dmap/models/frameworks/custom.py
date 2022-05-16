@@ -8,7 +8,7 @@ import torch
 import torch.distributed as dist
 from deep3dmap.runners import BaseModule
 
-#warp model with parallel in the framework
+#can warp model with parallel in the framework
 class CustomFramework(BaseModule, metaclass=ABCMeta):
     """Base class for reconstructors."""
 

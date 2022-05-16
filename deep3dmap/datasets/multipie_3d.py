@@ -516,14 +516,14 @@ def get_batch_unsupervise(datadir, datainfo, imgdir,imgpath2auxinfo, fix_pose, m
 class FaceImagesAsyncDataset(object):
     CLASSES=('face')
     def __init__(self,datadir, datafile, imgdir, auxfile, state='unsup', image_size=384, texture_size=384, fix_pose=True, tuplesize=3, patchid=0,batchsize=1,
-                 nthread=2,maxnum=1000, is_train=True):
+                 nthread=2,maxnum=None, is_train=True):
         print((dt()), 'load data info...')
         datainfo = pickle.load(open(datafile,"rb"))
         imgpath2auxinfo = pickle.load(open(auxfile,"rb"))
-        self.length=len(datainfo.keys())
+        self.length=max(1000,len(datainfo.keys()))
         print(dt(), 'load finished, %d ids'%len(datainfo.keys()))
         self.state=state
-        self.iter_size = 1+int(len(datainfo.keys())/batchsize)
+        self.iter_size = 1+int(self.length/batchsize)
 
         
         #tuplesize = 5 #5view
