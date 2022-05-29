@@ -82,6 +82,7 @@ python tools/data_gen/prnet.py -i /path/to/300WLP -o /path/to/300WLP-256
 sh scripts/prnet/run_train_prnet.sh configs/prnet/prnet_300wlp.py GPU_NUMS
 ```
 
+
 ## img2mesh
 
 ### Data Preperation for Multipie
