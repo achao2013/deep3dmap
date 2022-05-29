@@ -2,10 +2,11 @@ import torch
 import torch.nn as nn
 from collections import defaultdict
 from einops import rearrange
-
+from ..builder import BACKBONES
 from deep3dmap.core.renderer.renderer_nfvr import sample_pdf, inference
 from deep3dmap.models.backbones import NeRF
 
+@BACKBONES.register_module()
 class GNeRF(nn.Module):
     def __init__(self, ray_sampler, xyz_freq=10, dir_freq=4, fc_depth=8, fc_dim=256, skips=(4,),
                  N_samples=64, N_importance=64, chunk=1024 * 32, white_back=False):

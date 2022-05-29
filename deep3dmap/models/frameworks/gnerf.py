@@ -18,15 +18,44 @@ from deep3dmap.models.frameworks.custom import CustomFramework
 from deep3dmap.datasets.pipelines.formating import to_tensor
 from deep3dmap.core.utils.device_transfer import to_cuda
 from deep3dmap.core.utils.fileio import read_obj
-from deep3dmap.core.renderer.renderer_pt3d import Pt3dRenderer
-from ..builder import BACKBONES, build_backbone
 
-
+from deep3dmap.models.modulars.gnerf import GNeRF
+from deep3dmap.models.modulars.dynamic_patch_discriminator import Discriminator
+from deep3dmap.core.renderer.samples.patch_sampler import FlexPatchSampler,FullImageSampler,RescalePatchSampler 
+from deep3dmap.core.renderer.samples.ray_sampler import RaySampler
+from deep3dmap.models.modulars.embeddings import PoseParameters
+from deep3dmap.models.modulars.inversion_net import InversionNet
 
 @MODELS.register_module()
-class gnerf(CustomFramework):
+class GanNerf(CustomFramework):
     def __init__(self, model_cfgs, train_cfg=None, test_cfg=None):
-        super(gnerf, self).__init__()
+        super(GanNerf, self).__init__()
+        
+        self.dynamic_patch_sampler = FlexPatchSampler(
+            random_scale=model_cfgs.random_scale,
+            min_scale=model_cfgs.min_scale,
+            max_scale=model_cfgs.max_scale,
+            scale_anneal=model_cfgs.scale_anneal,
+        )
+
+        self.static_patch_sampler = RescalePatchSampler()
+
+        self.full_img_sampler = FullImageSampler()
+
+        self.ray_sampler = RaySampler(near=model_cfgs.near, far=model_cfgs.far, azim_range=model_cfgs.azim_range, elev_range=model_cfgs.elev_range,
+                             radius=model_cfgs.radius, look_at_origin=model_cfgs.look_at_origin, ndc=model_cfgs.ndc,
+                             intrinsics=train_loader.dataset.intrinsics.clone().detach())
+        self.generator=GNeRF(
+            ray_sampler=self.ray_sampler, xyz_freq=model_cfgs.xyz_freq, dir_freq=model_cfgs.xyz_freq, fc_depth=model_cfgs.fc_depth,
+            fc_dim=model_cfgs.fc_dim, chunk=model_cfgs.chunk, white_back=model_cfgs.white_back)
+        self.discriminator = Discriminator(
+            conditional=model_cfgs.conditional, policy=model_cfgs.policy, ndf=model_cfgs.ndf, imsize=model_cfgs.patch_size)
+        self.inv_net = InversionNet(imsize=model_cfgs.inv_size, pose_mode=model_cfgs.pose_mode)
+
+        self.train_pose_params = PoseParameters(
+            length=len(train_loader.dataset), pose_mode=model_cfgs.pose_mode, data=model_cfgs.data)
+        self.val_pose_params = PoseParameters(
+            length=len(eval_loader.dataset), pose_mode=model_cfgs.pose_mode, data=model_cfgs.data)
 
         for network_name in self.network_names:
             network = getattr(self, network_name)
