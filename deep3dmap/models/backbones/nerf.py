@@ -2,9 +2,10 @@ import torch
 import torch.nn as nn
 from collections import defaultdict
 from einops import rearrange
+from ..builder import BACKBONES
+from deep3dmap.models.modulars.embeddings import HighDimEmbedding
 
-
-
+@BACKBONES.register_module()
 class NeRF(nn.Module):
     def __init__(self, xyz_freq=10, dir_freq=4, fc_depth=8, fc_dim=256, skips=(4,)):
         super(NeRF, self).__init__()
@@ -12,8 +13,8 @@ class NeRF(nn.Module):
         self.fc_dim = fc_dim
         self.skips = skips
 
-        self.embedding_xyz = Embedding(3, xyz_freq)
-        self.embedding_dir = Embedding(3, dir_freq)
+        self.embedding_xyz = HighDimEmbedding(3, xyz_freq)
+        self.embedding_dir = HighDimEmbedding(3, dir_freq)
         self.in_channels_xyz = self.embedding_xyz.out_channels
         self.in_channels_dir = self.embedding_dir.out_channels
 

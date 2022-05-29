@@ -81,3 +81,19 @@ python tools/data_gen/prnet.py -i /path/to/300WLP -o /path/to/300WLP-256
 ```sh
 sh scripts/prnet/run_train_prnet.sh configs/prnet/prnet_300wlp.py GPU_NUMS
 ```
+
+## PRNet
+
+### Data Preperation for Multipie
+
+```sh
+python tools/data_gen/multipie_get_lmk.py
+python tools/data_gen/multipie_orgnizedata.py
+```
+
+
+### Train on Multipie
+
+```sh
+sh scripts/pt3d_demos/run_train_imgs2face.sh configs/pt3d_demos/imgs2face_multipie.py GPU_NUMS
+```
