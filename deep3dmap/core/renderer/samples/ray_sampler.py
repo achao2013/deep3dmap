@@ -6,7 +6,7 @@ from tools.ray_utils import look_at_rotation
 
 
 class RaySampler(object):
-    def __init__(self, near, far, azim_range, elev_range, radius, look_at_origin, ndc, intrinsics):
+    def __init__(self, near, far, azim_range, elev_range, radius, look_at_origin, ndc, intrinsics=None):
         self.near = near
         self.far = far
         self.azim_range = azim_range
@@ -16,6 +16,9 @@ class RaySampler(object):
         self.up = (0., 0, 1)
         self.ndc = ndc
         self.scale = 1.0
+        self.start_intrinsics = intrinsics
+    # add for get_info_from_dataset in model
+    def set_start_intrinsics(self,intrinsics):
         self.start_intrinsics = intrinsics
 
     def update_intrinsic(self, scale):

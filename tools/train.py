@@ -338,6 +338,9 @@ def main():
             CLASSES=datasets[0].CLASSES)
     # add an attribute for visualization convenience
     model.CLASSES = datasets[0].CLASSES
+    # add an attribute from dataset if need
+    if cfg.model.get('need_info_from_datasets',False):
+        model.set_info_from_datasets(datasets)
     train_reconstruction(
         model,
         datasets,

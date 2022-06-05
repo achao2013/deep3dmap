@@ -18,50 +18,50 @@ image_size=256
 
 # model settings
 model = dict(
-    type='imgs2mesh',
+    type='GanNerf',
+    need_info_from_datasets=True,
     model_cfgs=dict(
-        model_name= "imgs2face",
-        category= "face",
-        use_sampling=True,
-        image_size=image_size,
-        texture_size=image_size,
-        template_uvs_path="magicbox/face/diskmap/uvs.npy",
-        template_normal_path= "magicbox/face/template_normal.obj",
-        shape_param_path= "magicbox/face/Model_Shape.mat",
-        exp_param_path= "magicbox/face/Model_Expression.mat",
-        other_param_path="magicbox/face/sigma_exp.mat",
-        tuplesize=3,
-        model_shape=dict(type='Shape3dmmEncoder')
-    ))
+        model_name= "GanNerf",
+        distributed=True,
+        azim_range= [ 0., 360. ],  # the range of azimuth
+        elev_range= [ 0., 90. ],   # the range of elevation
+        radius= [ 4.0, 4.0 ],  # the range of radius
+        near= 2.0,
+        far= 6.0,
+        white_back= True,
+        ndc= False,
+        look_at_origin= True,
+        pose_mode= '3d')
+    )
 
 # dataset settings
-#train_pipeline = []
-test_pipeline = []
+train_pipeline = [
+    dict(type='Resize', img_scale=(400,400), keys=['img']),
+    dict(type='ToTensor',keys='img'),
+    dict(type='BlendAToRGB'),
+    dict(type='NormalizeForGAN')
+]
+test_pipeline = [
+    dict(type='Resize', img_scale=(400,400), keys=['img']),
+    dict(type='ToTensor',keys='img'),
+    dict(type='NormalizeForGAN')
+]
 use_data_loaders=False
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
-    train_sup=dict(
-            type='FaceTexUVAsyncDataset',
+    train=dict(
+            type='Blender',
+            name='blender',
             state=state_seq[0],
-            tuplesize=3,
-            image_size= image_size,
-            texture_size=image_size,
-            datadir='/home/achao/3d/database',
-            imgdir='/media/achao/storage_5tb/data',
-            datafile='data/multipie/multipie_uvtex2poseimgs.pkl',
-            auxfile='data/multipie/multipie_imgpath2auxinfo.pkl'),
-    train_unsup=dict(
-            type='FaceImagesAsyncDataset',
-            state=state_seq[1],
-            tuplesize=3,
-            image_size= image_size,
-            texture_size=image_size,
-            datadir='/home/achao/3d/database',
-            imgdir='/media/achao/storage_5tb/data',
-            datafile='data/multipie/multipie_idillumexp2poseimgpaths.pkl',
-            auxfile='data/multipie/multipie_imgpath2auxinfo.pkl'),
-    val=dict(pipeline=test_pipeline))
+            sort_key=lambda x: int(x.split('/')[-1][x.split('/')[-1].index('_') + 1:  x.split('/')[-1].index('.')]),
+            pipeline=train_pipeline
+            ),
+    val=dict(
+        type='DTU',
+        name='dtu',
+        sort_key=lambda x: int(x.split('/')[-1][5:8]),
+        pipeline=test_pipeline))
 
 ##runner settings
 
@@ -72,7 +72,7 @@ lr_config = dict(
     warmup_iters=500,
     warmup_ratio=0.001,
     step=[8])
-workflow = [('train', 1)]
+workflow = [('train', 1),('val',1)]
 runner = dict(
     type='StateMachineRunner', 
     runner_cfgs=dict(

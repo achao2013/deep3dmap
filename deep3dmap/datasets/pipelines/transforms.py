@@ -28,6 +28,27 @@ except ImportError:
     Compose = None
 
 
+# normalize the range of input image from [0, 1] to [-1, 1]
+@PIPELINES.register_module()
+class NormalizeForGAN(object):
+    def __call__(self, x):
+        return x * 2 - 1
+
+    def __repr__(self):
+        return self.__class__.__name__ + '()'
+
+
+# blend A to RGB
+@PIPELINES.register_module()
+class BlendAToRGB(object):
+    def __call__(self, x):
+        if x.shape[0] == 4:
+            x = x[:3, ...] * x[-1:, ...] + (1 - x[-1:, ...])
+        return x
+
+    def __repr__(self):
+        return self.__class__.__name__ + '()'
+
 @PIPELINES.register_module()
 class Resize:
     """Resize images & bbox & mask.

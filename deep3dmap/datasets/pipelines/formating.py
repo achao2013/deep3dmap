@@ -8,7 +8,7 @@ from deep3dmap.parallel import DataContainer as DC
 
 from ..builder import PIPELINES
 
-
+#can be called by model directly
 def to_tensor(data):
     """Convert objects of various python types to :obj:`torch.Tensor`.
 
