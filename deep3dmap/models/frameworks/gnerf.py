@@ -27,12 +27,15 @@ from deep3dmap.core.renderer.samples.ray_sampler import RaySampler
 from deep3dmap.models.modulars.embeddings import PoseParameters
 from deep3dmap.models.modulars.inversion_net import InversionNet
 from deep3dmap.parallel import MMDataParallel, MMDistributedDataParallel
+from deep3dmap.core.utils.param_utils import count_trainable_parameters
 
 @MODELS.register_module()
 class GanNerf(CustomFramework):
     def __init__(self, model_cfgs, train_cfg=None, test_cfg=None):
         super(GanNerf, self).__init__()
-        
+        # sampler
+        model_cfgs.min_scale = model_cfgs.patch_size / max(model_cfgs.img_wh[0], model_cfgs.img_wh[1])
+
         self.dynamic_patch_sampler = FlexPatchSampler(
             random_scale=model_cfgs.random_scale,
             min_scale=model_cfgs.min_scale,
@@ -77,12 +80,18 @@ class GanNerf(CustomFramework):
             else:
                 setattr(self, net_name, MMDataParallel(
                     net.cuda(model_cfgs.gpu_ids[0]), device_ids=model_cfgs.gpu_ids))
+                    
     def set_info_from_datasets(self,datasets):
         self.ray_sampler.set_start_intrinsics(datasets[0].intrinsics.clone().detach().cuda())
         self.train_pose_params = PoseParameters(
             length=len(datasets[0]), pose_mode=self.pose_mode, data=datasets[0].name)
         self.val_pose_params = PoseParameters(
             length=len(datasets[1]), pose_mode=self.pose_mode, data=datasets[1].name)
+        print(f'Generator params: {count_trainable_parameters(self.generator.module)}, '
+          f'Discriminator params: {count_trainable_parameters(self.discriminator.module)}'
+          f'InversionNet params: {count_trainable_parameters(self.inv_net.module)}'
+          f'Optimizable poses: {len(self.train_pose_params.poses_embed)}')
+
     def name2net(self,name):
         return getattr(self, name)
     def optseq2netnames(self,optseq):

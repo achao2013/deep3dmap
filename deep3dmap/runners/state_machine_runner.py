@@ -46,9 +46,9 @@ class StateMachineRunner(BaseRunner):
         self._max_epochs= runner_cfgs.get('max_epochs',32)
         self.is_multi_opt_iters=False
         #if we optimizer model components separately, we need an optimizer list 
-        if isinstance(runner_cfgs.optimizer,list):
+        if isinstance(runner_cfgs.optimizer,dict):
             self.init_optimizers(runner_cfgs.optimizer)
-            self.is_multi_opt_iters=len(runner_cfgs.optimizer)>1
+            self.is_multi_opt_iters=len(runner_cfgs.optimizer.keys())>1
             self.cur_nets=[]
             self.cur_optimizers=[]
         else:
@@ -61,10 +61,12 @@ class StateMachineRunner(BaseRunner):
         return optim_name
     def init_optimizers(self, opt_cfgs):
         self.optimizer_names = []
-        for i in range(len(opt_cfgs)):
-            net_name = self.model.network_names[i]
+        
+        for k in range(opt_cfgs):
+            idx=self.model.network_names.index(k)
+            net_name = self.model.network_names[idx]
             optim_name = self.net2opt_name(net_name)
-            optimizer = build_optimizer(getattr(self.model, net_name), opt_cfgs[i])
+            optimizer = build_optimizer(getattr(self.model, net_name), opt_cfgs[idx])
 
             setattr(self, optim_name, optimizer)
             self.optimizer_names += [optim_name]
@@ -105,9 +107,11 @@ class StateMachineRunner(BaseRunner):
     def setup_cur_nets_and_opts(self,cur_netnames):
         self.cut_nets=[]
         self.cur_optimizers=[]
+        self.cur_scheduler_names=[]
         for netname in cur_netnames:
             self.cut_nets.append(self.model.name2net(netname))
             self.cur_optimizers.append(getattr(self, self.net2opt_name(netname)))
+            self.cur_scheduler_names.append(netname)
     def run_multi_iter(self, data_batch, train_mode, **kwargs):
         if train_mode:
             self.model.setup_optimize_sequences(self.state)

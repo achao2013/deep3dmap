@@ -1,7 +1,4 @@
 #main
-from sched import scheduler
-
-
 work_dir="results/gnerf_belender"
 distributed=True
 dist_params = dict(backend='nccl')
@@ -17,7 +14,7 @@ resume_from = None
 load_from = None
 
 state_seq = ['A', 'ABAB', 'B']
-img_wh=(400,400)
+img_wh=(500,400)
 
 # model settings
 model = dict(
@@ -34,16 +31,16 @@ model = dict(
         patch_size=16,
         random_scale=True,
         #data
-        img_wh=img_wh,
-        azim_range= [ 0., 360. ],  # the range of azimuth
-        elev_range= [ 0., 90. ],   # the range of elevation
-        radius= [ 4.0, 4.0 ],  # the range of radius
-        near= 2.0,
-        far= 6.0,
-        white_back= True,
+        img_wh= img_wh,
+        azim_range= [ 0., 150. ],
+        elev_range= [ 0., 80. ],
+        radius= [ 4.0, 4.0 ],
+        near= 1.5,
+        far= 8.0,
+        white_back= False,
         ndc= False,
-        look_at_origin= True,
-        pose_mode= '3d'
+        look_at_origin= False,
+        pose_mode= '6d',
         #inversion network
         inv_size=64,
         # discriminator
@@ -62,13 +59,13 @@ model = dict(
 
 # dataset settings
 train_pipeline = [
-    dict(type='Resize', img_scale=img_wh, keys=['img']),
+    dict(type='Resize', img_scale=(400,400), keys=['img']),
     dict(type='ToTensor',keys='img'),
     dict(type='BlendAToRGB'),
     dict(type='NormalizeForGAN')
 ]
 test_pipeline = [
-    dict(type='Resize', img_scale=img_wh, keys=['img']),
+    dict(type='Resize', img_scale=(400,400), keys=['img']),
     dict(type='ToTensor',keys='img'),
     dict(type='NormalizeForGAN')
 ]
@@ -77,21 +74,22 @@ data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(
-            type='Blender',
-            name='blender_train',
+            type='DTU',
+            name='dtu_train',
             data_dir='',
             img_wh=img_wh,
+            patch_size=16,
             split='train',
-            sort_key=lambda x: int(x.split('/')[-1][x.split('/')[-1].index('_') + 1:  x.split('/')[-1].index('.')]),
+            sort_key=lambda x: int(x.split('/')[-1][5:8]),
             pipeline=train_pipeline
             ),
     val=dict(
-        type='Blender',
-        name='blender_val',
+        type='DTU',
+        name='dtu_val',
         data_dir='',
         img_wh=img_wh,
+        sort_key=lambda x: int(x.split('/')[-1][5:8]),
         split='val',
-        sort_key=lambda x: int(x.split('/')[-1][x.split('/')[-1].index('_') + 1:  x.split('/')[-1].index('.')]),
         pipeline=test_pipeline))
 
 ##runner settings

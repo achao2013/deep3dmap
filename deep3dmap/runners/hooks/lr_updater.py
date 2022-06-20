@@ -209,6 +209,40 @@ class StepLrUpdaterHook(LrUpdaterHook):
             lr = max(lr, self.min_lr)
         return lr
 
+@HOOKS.register_module()
+class MultiStepLrUpdaterHook():
+    """Multi Step LR schedulers with min_lr clipping.
+
+    Args:
+        step (int | list[int]): Step to decay the LR. If an int value is given,
+            regard it as the decay interval. If a list is given, decay LR at
+            these steps.
+        gamma (float, optional): Decay LR ratio. Default: 0.1.
+        min_lr (float, optional): Minimum LR value to keep. If LR after decay
+            is lower than `min_lr`, it will be clipped to this value. If None
+            is given, we don't perform lr clipping. Default: None.
+    """
+
+    def __init__(self,lr_schedulers):
+        self.lr_schedulers=lr_schedulers
+        self.lrsch2hook=[]
+        for lr_sch in self.lr_schedulers:
+            self.lrsch2hook[lr_sch]=StepLrUpdaterHook(lr_sch)
+        
+
+    def before_run(self, runner):
+        for lr_sch in self.lrsch2hook:
+            self.lrsch2hook[lr_sch].before_run(runner)
+
+    def before_train_epoch(self, runner):
+        for lr_sch in self.lrsch2hook:
+            self.lrsch2hook[lr_sch].before_train_epoch(runner)
+        
+
+    def before_train_iter(self, runner):
+        for lr_sch in runner.cur_scheduler_names:
+            self.lrsch2hook[lr_sch].before_train_iter(runner)
+        
 
 @HOOKS.register_module()
 class ExpLrUpdaterHook(LrUpdaterHook):
