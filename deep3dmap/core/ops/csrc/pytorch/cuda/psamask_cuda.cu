@@ -1,4 +1,4 @@
-// Copyright (c) OpenMMLab. All rights reserved
+// Copyright (c) achao2013. All rights reserved
 // Modified from
 // https://github.com/hszhao/semseg/blob/master/lib/psa/src
 

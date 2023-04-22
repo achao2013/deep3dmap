@@ -1,4 +1,4 @@
-// Copyright (c) OpenMMLab. All rights reserved
+// Copyright (c) achao2013. All rights reserved
 #ifndef MASKED_CONV2D_CUDA_KERNEL_CUH
 #define MASKED_CONV2D_CUDA_KERNEL_CUH
 

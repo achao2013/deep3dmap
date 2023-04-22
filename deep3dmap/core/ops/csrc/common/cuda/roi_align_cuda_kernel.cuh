@@ -1,4 +1,4 @@
-// Copyright (c) OpenMMLab. All rights reserved
+// Copyright (c) achao2013. All rights reserved
 #ifndef ROI_ALIGN_CUDA_KERNEL_CUH
 #define ROI_ALIGN_CUDA_KERNEL_CUH
 

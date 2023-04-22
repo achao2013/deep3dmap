@@ -1,4 +1,4 @@
-// Copyright (c) OpenMMLab. All rights reserved
+// Copyright (c) achao2013. All rights reserved
 #ifndef TIN_SHIFT_CUDA_KERNEL_CUH
 #define TIN_SHIFT_CUDA_KERNEL_CUH
 

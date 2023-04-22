@@ -559,7 +559,7 @@ def initialize(module, init_cfg):
     Args:
         module (``torch.nn.Module``): the module will be initialized.
         init_cfg (dict | list[dict]): initialization configuration dict to
-            define initializer. OpenMMLab has implemented 6 initializers
+            define initializer. achao2013 has implemented 6 initializers
             including ``Constant``, ``Xavier``, ``Normal``, ``Uniform``,
             ``Kaiming``, and ``Pretrained``.
     Example:

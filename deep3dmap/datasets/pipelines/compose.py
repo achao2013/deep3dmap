@@ -1,4 +1,4 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) achao2013. All rights reserved.
 import collections
 
 from deep3dmap.core.utils import build_from_cfg

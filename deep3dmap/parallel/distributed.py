@@ -1,4 +1,4 @@
-# Copyright (c) OpenMMLab, achao2013. All rights reserved.
+# Copyright (c) achao2013, achao2013. All rights reserved.
 import torch
 from torch.nn.parallel.distributed import (DistributedDataParallel,
                                            _find_tensors)

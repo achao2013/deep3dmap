@@ -1,4 +1,4 @@
-// Copyright (c) OpenMMLab. All rights reserved
+// Copyright (c) achao2013. All rights reserved
 #ifndef POINT_IN_BOXES_CUDA_KERNEL_CUH
 #define POINT_IN_BOXES_CUDA_KERNEL_CUH
 

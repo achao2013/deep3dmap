@@ -1,4 +1,4 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) achao2013. All rights reserved.
 from .builder import (OPTIMIZER_BUILDERS, OPTIMIZERS, build_optimizer,
                       build_optimizer_constructor)
 from .default_constructor import DefaultOptimizerConstructor

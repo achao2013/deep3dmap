@@ -1,4 +1,4 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) achao2013. All rights reserved.
 import torch
 from torch.nn.parallel._functions import Scatter as OrigScatter
 

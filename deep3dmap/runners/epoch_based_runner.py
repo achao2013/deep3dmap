@@ -1,4 +1,4 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) achao2013. All rights reserved.
 #modified by achao2013
 import os.path as osp
 import platform

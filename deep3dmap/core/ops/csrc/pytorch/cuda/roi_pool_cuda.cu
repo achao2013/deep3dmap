@@ -1,4 +1,4 @@
-// Copyright (c) OpenMMLab. All rights reserved
+// Copyright (c) achao2013. All rights reserved
 #include "pytorch_cuda_helper.hpp"
 #include "roi_pool_cuda_kernel.cuh"
 

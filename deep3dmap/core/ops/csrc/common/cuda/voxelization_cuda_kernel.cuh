@@ -1,4 +1,4 @@
-// Copyright (c) OpenMMLab. All rights reserved.
+// Copyright (c) achao2013. All rights reserved.
 #ifndef VOXELIZATION_CUDA_KERNEL_CUH
 #define VOXELIZATION_CUDA_KERNEL_CUH
 

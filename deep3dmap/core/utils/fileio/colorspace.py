@@ -1,4 +1,4 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) achao2013. All rights reserved.
 import cv2
 import numpy as np
 

@@ -1,4 +1,4 @@
-// Copyright (c) OpenMMLab. All rights reserved.
+// Copyright (c) achao2013. All rights reserved.
 // Modified from
 // https://github.com/sshaoshuai/Pointnet2.PyTorch/tree/master/pointnet2/src/group_points.cpp
 

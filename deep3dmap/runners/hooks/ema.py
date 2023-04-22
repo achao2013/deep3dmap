@@ -1,4 +1,4 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) achao2013. All rights reserved.
 from ...parallel import is_module_wrapper
 from ..hooks.hook import HOOKS, Hook
 

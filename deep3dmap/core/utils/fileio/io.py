@@ -1,4 +1,4 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) achao2013. All rights reserved.
 from pathlib import Path
 
 from ..misc import is_list_of, is_str

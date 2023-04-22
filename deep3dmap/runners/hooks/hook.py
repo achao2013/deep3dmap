@@ -1,4 +1,4 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) achao2013. All rights reserved.
 from deep3dmap.core.utils import Registry, is_method_overridden
 
 HOOKS = Registry('hook')

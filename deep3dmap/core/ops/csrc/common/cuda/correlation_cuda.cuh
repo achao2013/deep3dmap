@@ -1,4 +1,4 @@
-// Copyright (c) OpenMMLab. All rights reserved.
+// Copyright (c) achao2013. All rights reserved.
 // Modified from
 // https://github.com/ClementPinard/Pytorch-Correlation-extension/blob/master/Correlation_Module/correlation_cuda_kernel.cu
 // Original licence: Under MIT License

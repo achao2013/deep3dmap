@@ -5,7 +5,7 @@
 # File Name: image_io.py
 # Description:
 """
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) achao2013. All rights reserved.
 import io
 import os.path as osp
 from pathlib import Path

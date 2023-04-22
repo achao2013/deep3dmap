@@ -1,4 +1,4 @@
-// Copyright (c) OpenMMLab. All rights reserved
+// Copyright (c) achao2013. All rights reserved
 #ifndef ASSIGN_SCORE_WITHK_CUDA_KERNEL_CUH
 #define ASSIGN_SCORE_WITHK_CUDA_KERNEL_CUH
 

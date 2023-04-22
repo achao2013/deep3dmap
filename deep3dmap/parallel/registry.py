@@ -1,4 +1,4 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) achao2013. All rights reserved.
 from torch.nn.parallel import DataParallel, DistributedDataParallel
 
 from ..core.utils import Registry

@@ -1,4 +1,4 @@
-// Copyright (c) OpenMMLab. All rights reserved
+// Copyright (c) achao2013. All rights reserved
 #ifndef THREE_NN_CUDA_KERNEL_CUH
 #define THREE_NN_CUDA_KERNEL_CUH
 
