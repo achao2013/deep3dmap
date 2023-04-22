@@ -1,0 +1,3 @@
+[submodule "pnpmodules/nerfstudio"]
+	path = pnpmodules/nerfstudio
+	url = https://github.com/nerfstudio-project/nerfstudio.git
