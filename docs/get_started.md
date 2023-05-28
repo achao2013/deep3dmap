@@ -98,3 +98,15 @@ python tools/data_gen/multipie_orgnizedata.py
 ```sh
 sh scripts/pt3d_demos/run_train_imgs2face.sh configs/pt3d_demos/imgs2face_multipie.py GPU_NUMS
 ```
+
+
+## lerf
+
+### data prepare
+
+download [dataset](https://drive.google.com/drive/folders/1vh0mSl7v29yaGsxleadcj-LCZOE_WEWB)
+
+### train
+```sh
+python tools/ns/train.py --method-name lerf --data /path/to/data_folder
+```

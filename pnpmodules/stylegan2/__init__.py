@@ -12,6 +12,6 @@ sys.path.append(str(module_path.resolve()))
 os.chdir(module_path)
 
 from model import Generator, Discriminator
-from lpips import PerceptualLoss
+from lpips_sg2 import PerceptualLoss
 
 os.chdir(current_path)

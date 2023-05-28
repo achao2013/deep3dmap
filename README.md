@@ -42,6 +42,7 @@ This is an 3d reconstruction/understanding closed loop framework in deep learnin
 - [x] Joint 3D Face Reconstruction and Dense Alignment with Position Map Regression Network
 - [x] Multi-view face reconstruction example using pytorch3d.
 - [x] GNeRF: GAN-based Neural Radiance Field without Posed Camera
+- [x] LERF: Language Embedded Radiance Fields
 - [ ] GIRAFFE: Representing Scenes as Compositional Generative Neural Feature Fields
 - [ ] SelfRecon: Self Reconstruction Your Digital Avatar from Monocular Video
 - [ ] Pixel2Mesh: Generating 3D Mesh Models from Single RGB Images

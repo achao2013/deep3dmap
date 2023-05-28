@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from lpips import dist_model
+from . import dist_model
 
 class PerceptualLoss(torch.nn.Module):
     def __init__(self, model='net-lin', net='alex', colorspace='rgb', spatial=False, use_gpu=True, gpu_ids=[0]): # VGG using our perceptually-learned weights (LPIPS metric)
